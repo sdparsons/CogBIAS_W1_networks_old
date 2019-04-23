@@ -61,11 +61,11 @@ header-includes: #allows you to add in your own Latex packages
 ```
 
 ```{r load_packages, include = FALSE}
-library("papaja")
-library("tidyverse")
-library("foreign")
-library("bootnet")
-library("mgm")
+library("papaja")    # for APA formatting awesome-ness in Rmarkdown
+library("tidyverse") # for restructuring data
+library("foreign")   # for using SPSS data
+library("bootnet")   # for network analysis
+library("mgm")       # for networtk analysis
 
 ```
 
