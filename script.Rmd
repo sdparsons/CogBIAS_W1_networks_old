@@ -53,11 +53,15 @@ header-includes: #allows you to add in your own Latex packages
 ---
 ```{r setup}
 # comment in as needed
-#knitr::opts_chunk$set(comment = NA)
-#knitr::opts_chunk$set(message = FALSE)
-#knitr::opts_chunk$set(warning = FALSE)
-#knitr::opts_chunk$set(echo = TRUE)
-#knitr::opts_chunk$set(echo = TRUE, fig.pos= "h")
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(fig.pos= "h")
+knitr::opts_chunk$set(tidy = TRUE)
+knitr::opts_chunk$set(results='hide')
+
+
 ```
 
 ```{r load_packages, include = FALSE}
@@ -67,6 +71,7 @@ library("foreign")   # for using SPSS data
 library("bootnet")   # for network analysis
 library("mgm")       # for networtk analysis
 library("qgraph")    # for network analysis - specifically averageLayout
+library("NetworkComparisonTest") # for network model comparisons
 
 ```
 
@@ -80,7 +85,7 @@ AIBQ <- read.spss("Data/W1_AIBQ.sav", to.data.frame = TRUE)
 Memory <- read.spss("Data/W1_SRET.sav", to.data.frame = TRUE)
 ```
 
-
+The introduction section will not need much of an update. There will need to be some revisions based on my updated understanding, as well as reviewer feedback, but we should be in good standing here. 
 
 
 # Methods
@@ -111,10 +116,8 @@ The methods section will not need to be massively updated.
 
 ### Network stability
 
-
 ```{r create dataframe for analysis}
 # first extract the variables of interest
-
 Qdat <- data.frame(subject = scores2$Master_subject,
                    MHC_Emo = scores2$MCSHC_Emotional_wellbeing,
                    MHC_Soc = scores2$MCSHC_Social_wellbeing,
@@ -250,13 +253,51 @@ plot(glasso_high, layout = layout_common, title = "high - MH", details = T, them
 
 ```
 
-```{r networkcomparisontest}
+### network comparisons
 
+```{r networkcomparisontest, results='hide'}
+lh <- NCT(low3, high3, it=1000, gamma = .1, binary.data=FALSE)
+lm <- NCT(low3, mid3, it=1000, gamma = .1, binary.data=FALSE)
+mh <- NCT(mid3, high3, it=1000, gamma = .1, binary.data=FALSE)
 
+lh$glstrinv.pval
+lh$nwinv.pval
+
+lm$glstrinv.pval
+lm$nwinv.pval
+
+mh$glstrinv.pval
+mh$nwinv.pval
 ```
 
 
-```{r mgm}
+results from the NCT show that the low group differs from the high group (strength p = `r lh$glstrinv.pval` and biggest edge difference p = `r lh$nwinv.pval`) and the mid group perhaps differed (global strength may not survive multiple comparisons though, and max diff was n.s different. ). The mid and high groups do not differ. 
+
+
+
+```{r trying to figure out optimalgraph, eval=FALSE}
+
+modSelect_0 <- ggmModSelect(cor_auto(low3), nrow(low3), nCores = 12, start = "glasso", considerPerStep = "all", gamma = 0)
+
+qgraph(modSelect_0$graph, layout = "spring", theme = "colorblind", 
+       title = "ggmModSelect (gamma = 0)", cut = 0)
+
+modSelect_0.5 <- ggmModSelect(cor_auto(low3), nrow(low3), gamma = 0.5, nCores = 12, start = "glasso", considerPerStep = "all")
+
+qgraph(modSelect_0.5$graph, layout = "spring", theme = "colorblind", 
+       title = "ggmModSelect (gamma = 0)", cut = 0)
+
+```
+
+###mgm
+
+we then explored this in a more robust way using mgm...
+
+#### im mainly curious what this is
+
+seriously what does the four hashes mean???
+
+```{r mgm, results='hide'}
 
 # put low and high group into a single dataframe
 low3$MH <- 0
@@ -303,7 +344,7 @@ qgraph(fit_obj$pairwise$wadj, pie = error_list,
 
 ```
 
-```{r}
+```{r, results='hide'}
 
 fit_obj2 <- mgm(data = full,
   type = c(rep("g", 9), "c"),
@@ -380,7 +421,7 @@ label.cex = 1)
 ```
 
 
-```{r stability}
+```{r stability, results='hide'}
 boot1 <- estimateNetwork(data = full,
                   default = "mgm",
                    type = c(rep("g", 9), "c"),
@@ -397,13 +438,19 @@ boot1 <- estimateNetwork(data = full,
  boot2 <- bootnet(boot1, nBoots = 50, nCores = parallel::detectCores())
  
  plot(boot2, order = "sample")
+ 
+  boot3 <- bootnet(boot1, nBoots = 50, nCores = parallel::detectCores(), type = "case")
+ 
+ plot(boot2, "strength", plot = "difference")
+ plot(boot2, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
+
 
 ```
 
 
 
 
-```{r}
+```{r, results='hide'}
 # does it work for linear moderators????
 
 testing <- CCBH_sortbyMHC %>%
