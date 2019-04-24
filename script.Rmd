@@ -1,6 +1,6 @@
 ---
 title             : "Cognitive correlates of mental health in adolescence: A network analysis approach"
-shorttitle        : "Title"
+shorttitle        : "Combined Cognitive Bias Hypothesis Network"
 
 author: 
   - name          : "Sam Parsons"
@@ -66,10 +66,12 @@ library("tidyverse") # for restructuring data
 library("foreign")   # for using SPSS data
 library("bootnet")   # for network analysis
 library("mgm")       # for networtk analysis
+library("qgraph")    # for network analysis - specifically averageLayout
 
 ```
 
 ```{r load_data}
+# demographics, questionnaire responses, and task data all stored in separate SPSS data files.
 demographics <- read.spss("Data/W1_demographics.sav", to.data.frame = TRUE)
 scores1 <- read.spss("Data/W1_Q1.sav", to.data.frame = TRUE)
 scores2 <- read.spss("Data/W1_Q2.sav", to.data.frame = TRUE)
@@ -83,15 +85,31 @@ Memory <- read.spss("Data/W1_SRET.sav", to.data.frame = TRUE)
 
 # Methods
 
+The methods section will not need to be massively updated. 
+
 ## Participants
 
-## Material
+## Measures
+
+### Mental Health Continuum
+
+### Attention Bias
+
+### Interpretation Bias
+
+### Memory Bias
 
 ## Procedure
 
-## Data analysis
-We used `r cite_r("r-references.bib")` for all our analyses.
+## Data analysis and network visualisation
 
+### Gaussian Graphical Model
+
+### Mixed Graphical Model and moderated network analysis
+
+### network centrality indices
+
+### Network stability
 
 
 ```{r create dataframe for analysis}
@@ -232,7 +250,13 @@ plot(glasso_high, layout = layout_common, title = "high - MH", details = T, them
 
 ```
 
-```{r}
+```{r networkcomparisontest}
+
+
+```
+
+
+```{r mgm}
 
 # put low and high group into a single dataframe
 low3$MH <- 0
@@ -274,20 +298,6 @@ qgraph(fit_obj$pairwise$wadj, pie = error_list,
 
 
 
-boot1 <- estimateNetwork(data = full,
-                 default = "mgm",
-                  type = c(rep("g", 9), "c"),
-                  level = c(rep(1, 9), 2),
-                  rule = "OR",
-                  binarySign = TRUE,
-                  moderators = c(10),
-                  criterion = "CV")
-
-plot(boot1)
-
-boot2 <- bootnet(boot1, nBoots = 50, nCores = 4)
-
-plot(boot2, order = "sample")
 
 
 
@@ -306,7 +316,125 @@ fit_obj2 <- mgm(data = full,
   #lambdaGam = .5
 )
 
+# n interactions
+n_int <- length(fit_obj2$interactions$weightsAgg[[2]])
+
+# for the predictability aspect
 p_obj2 <- predict(fit_obj2, full,
+errorCat = c("CC","nCC","CCmarg"),
+errorCon = c("R2"))
+
+
+error_list2 <- list() # List for ring-segments
+for(i in 1:9) error_list2[[i]] <- p_obj2$errors[i,2]
+beyondmarg2 <- p_obj2$errors[10,3]-p_obj2$errors[10,5]
+error_list2[[10]] <- c(p_obj2$errors[10,5],beyondmarg2)
+
+color_list2 <- list() # List for Colors
+for(i in 1:9) color_list2[[i]] <- "#90B4D4"
+color_list2[[10]] <- c("#ffa500", "#ff4300")
+
+# plotting predictability
+qgraph(fit_obj2$pairwise$wadj, pie = error_list2,
+  layout="spring", labels = colnames(full),
+  pieColor = color_list2, label.cex = .9,
+  edge.color = fit_obj2$pairwise$edgecolor,
+  curveAll = TRUE, curveDefault = .6,
+  cut = 0, labels = col(full))
+
+# plotting the interactions
+FactorGraph(object = fit_obj2,
+edge.labels = FALSE,
+PairwiseAsEdge = TRUE,
+labels = colnames(full),
+title = "fit2 with interactions")
+# note: 6 interactions
+
+
+# #playing
+# FactorGraph(object = fit_obj2,
+# edge.labels = FALSE,
+# PairwiseAsEdge = TRUE,
+# FactorLabels = TRUE,
+# Nodewise = TRUE, 
+# labels = colnames(full))
+
+# plotting the interactions and the predictability
+img <- FactorGraph(object = fit_obj2,
+edge.labels = FALSE,
+PairwiseAsEdge = TRUE,
+labels = colnames(full),
+pie = c(error_list, rep(0,n_int)),
+pieBorder = c(rep(.2,10),rep(0,n_int)),
+pieColor = c(color_list2,rep(0,n_int)),
+vsize = 2,
+vsize2 = .5,
+label.cex = 1)
+
+
+```
+
+``` {r centrality}
+
+
+```
+
+
+```{r stability}
+boot1 <- estimateNetwork(data = full,
+                  default = "mgm",
+                   type = c(rep("g", 9), "c"),
+                   level = c(rep(1, 9), 2),
+                   rule = "OR",
+                   binarySign = TRUE,
+                   moderators = c(10),
+                   criterion = "CV")
+ 
+ plot(boot1)
+ 
+ 
+ 
+ boot2 <- bootnet(boot1, nBoots = 50, nCores = parallel::detectCores())
+ 
+ plot(boot2, order = "sample")
+
+```
+
+
+
+
+```{r}
+# does it work for linear moderators????
+
+testing <- CCBH_sortbyMHC %>%
+  select(5,7,8,9,11,12,13,14,16,17) %>%
+  rename(MH = MHC_Tot,
+         AB_Ang = DP_angry,
+         AB_Hap = DP_happy,
+         AB_Pain  = DP_pain,
+         IB_S_Pos = Pos_Soc,
+         IB_N_Pos = Pos_nonsoc,
+         IB_S_Neg = Neg_soc,
+         IB_N_Neg = Neg_nonsoc,
+         MB_Pos = MEM_pos,
+         MB_Neg = MEM_neg)
+  
+
+fit_obj3 <- mgm(data = testing,
+  type = c(rep("g", 10)),
+  level = c(rep(1, 10)),
+  ruleReg = "OR",
+  k = 2,
+  binarySign = TRUE,
+  moderators = c(1)#,
+  #lambdaSel = "EBIC",
+  #lambdaGam = .5
+)
+
+
+
+# for the predictability aspect
+p_obj3 <- predict(fit_obj3, full,
 errorCat = c("CC","nCC","CCmarg"),
 errorCon = c("R2"))
 
@@ -320,7 +448,7 @@ color_list <- list() # List for Colors
 for(i in 1:9) color_list[[i]] <- "#90B4D4"
 color_list[[10]] <- c("#ffa500", "#ff4300")
 
-#library(qgraph)
+# plotting predictability
 qgraph(fit_obj2$pairwise$wadj, pie = error_list,
   layout="spring", labels = colnames(full),
   pieColor = color_list, label.cex = .9,
@@ -328,41 +456,25 @@ qgraph(fit_obj2$pairwise$wadj, pie = error_list,
   curveAll = TRUE, curveDefault = .6,
   cut = 0, labels = col(full))
 
-
-FactorGraph(object = fit_obj2,
+# plotting the interactions
+FactorGraph(object = fit_obj3,
 edge.labels = FALSE,
 PairwiseAsEdge = TRUE,
-labels = colnames(full))
+labels = colnames(testing),
+title = "fit3 with full linear")
 
 
-img <- FactorGraph(object = fit_obj2,
-edge.labels = FALSE,
-PairwiseAsEdge = TRUE,
-labels = colnames(full),
-pie = c(error_list, rep(0,7)),
-pieBorder = c(rep(.2,10),rep(0,7)),
-pieColor = c(color_list,rep(0,7)),
-vsize = 2,
-vsize2 = .5,
-label.cex = 1)
+
+
+## note to self, I also need to try to extract the layout of the nodes (only the variables not the interaction nodes) to try to keep them consistent, if possible. 
 ```
-
-``` {r networktree}
-library("networktree")
-
-tree1 <- networktree(nodevars  = full,
-                     splitvars = full[,"MH"],
-                     type = "glasso",
-                     method = "mob")
-
-plot(tree1)
-
-```
-
-
 
 
 # Results
+
+## glasso networks
+
+## moderated networks
 
 # Discussion
 
