@@ -1,0 +1,588 @@
+---
+title             : "Cognitive correlates of mental health in adolescence: A network analysis approach"
+shorttitle        : "Combined Cognitive Bias Hypothesis Network"
+
+author: 
+  - name          : "Sam Parsons"
+    affiliation   : "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "Postal address"
+    email         : "sam.parsons@psy.ox.ac.uk"
+  - name          : "Annabel Songco"
+    affiliation   : "1"
+  - name          : "Charlotte Booth"
+    affiliation   : "1"
+  - name          : "Elaine Fox"
+    affiliation   : "1"
+
+affiliation:
+  - id            : "1"
+    institution   : "University of Oxford"
+
+
+authornote: |
+  Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
+
+  Enter author note here.
+
+abstract: |
+  This is my abstract
+  
+keywords          : "keywords"
+wordcount         : "X"
+
+bibliography      : ["r-references.bib"]
+
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : yes
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+output            : papaja::apa6_pdf
+
+header-includes: #allows you to add in your own Latex packages
+- \usepackage{float} #use the 'float' package
+- \floatplacement{figure}{H} #make every figure with caption = h
+- \raggedbottom
+
+---
+```{r setup}
+# comment in as needed
+knitr::opts_chunk$set(comment = NA)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(fig.pos= "h")
+knitr::opts_chunk$set(tidy = TRUE)
+knitr::opts_chunk$set(results='hide')
+
+
+```
+
+```{r load_packages, include = FALSE}
+library("papaja")    # for APA formatting awesome-ness in Rmarkdown
+library("tidyverse") # for restructuring data
+library("foreign")   # for using SPSS data
+library("bootnet")   # for network analysis
+library("mgm")       # for networtk analysis
+library("qgraph")    # for network analysis - specifically averageLayout
+library("NetworkComparisonTest") # for network model comparisons
+
+```
+
+```{r load_data}
+# demographics, questionnaire responses, and task data all stored in separate SPSS data files.
+demographics <- read.spss("Data/W1_demographics.sav", to.data.frame = TRUE)
+scores1 <- read.spss("Data/W1_Q1.sav", to.data.frame = TRUE)
+scores2 <- read.spss("Data/W1_Q2.sav", to.data.frame = TRUE)
+Dot_Probe <- read.spss("Data/W1_DPT.sav", to.data.frame = TRUE)
+AIBQ <- read.spss("Data/W1_AIBQ.sav", to.data.frame = TRUE)
+Memory <- read.spss("Data/W1_SRET.sav", to.data.frame = TRUE)
+```
+
+The introduction section will not need much of an update. There will need to be some revisions based on my updated understanding, as well as reviewer feedback, but we should be in good standing here. 
+
+
+# Methods
+
+The methods section will not need to be massively updated. 
+
+## Participants
+
+## Measures
+
+### Mental Health Continuum
+
+### Attention Bias
+
+### Interpretation Bias
+
+### Memory Bias
+
+## Procedure
+
+## Data analysis and network visualisation
+
+### Gaussian Graphical Model
+
+### Mixed Graphical Model and moderated network analysis
+
+### network centrality indices
+
+### Network stability
+
+```{r create dataframe for analysis}
+# first extract the variables of interest
+Qdat <- data.frame(subject = scores2$Master_subject,
+                   MHC_Emo = scores2$MCSHC_Emotional_wellbeing,
+                   MHC_Soc = scores2$MCSHC_Social_wellbeing,
+                   MHC_Psy = scores2$MCSHC_Psychological_wellbeing,
+                   MHC_Tot = scores2$MCSHC_Total
+ )
+
+DPdat <- data.frame(subject  = Dot_Probe$Master_subject,
+                    DP_angry = Dot_Probe$angrybias,
+                    DP_happy = Dot_Probe$happybias,
+                    DP_pain  = Dot_Probe$painbias)
+
+AIBQdat <- data.frame(subject = AIBQ$Master_subject,
+                      Pos_Soc    = AIBQ$Interpretation_Pos_Social,
+                      Pos_nonsoc = AIBQ$Interpretation_Pos_Nonsocial,
+                      Neg_soc    = AIBQ$Interpretation_Neg_Social,
+                      Neg_nonsoc = AIBQ$Interpretation_Neg_Nonsocial)
+Memdat <- data.frame(subject = Memory$Master_subject,
+                     MEM_pos = Memory$PosEndorsedAndRecalled,
+                     MEM_neg = Memory$NegEndorsedAndRecalled)
+
+# combine into one dataframe
+CCBH <- cbind(Qdat,DPdat,AIBQdat,Memdat)
+
+
+# remove previous data frames to save space
+remove(list = c("scores1","Dot_Probe", "AIBQ", "Memory", "Qdat", "DPdat", "AIBQdat", "Memdat"))
+
+
+# remove participants with incomplete data # n=443 (with that extra participant, and DPT acc < 70% removed)
+CCBH <- na.omit(CCBH)
+CCBH <- subset(CCBH, CCBH$subject != "301041")
+CCBH <- subset(CCBH, CCBH$subject != "381491" & CCBH$subject != "331126" & CCBH$subject != "311002" & CCBH$subject != "311019") # removing participants with < 70% accuracy on task
+CCBH <-   CCBH %>% 
+                filter(subject != 311002,
+                       subject != 311019,
+                       subject != 311028,
+                       subject != 301036,
+                       subject != 301041,
+                       subject != 331126,
+                       subject != 381491,
+                       subject != 381441,
+                       subject != 381442,
+                       subject != 381443,
+                       subject != 381444,
+                       subject != 381478 )  # removing participants with missing or incorrectly logged DPT data
+
+
+
+mean(CCBH$MHC_Tot)
+sd(CCBH$MHC_Tot)
+quantile(CCBH$MHC_Tot, c(.33, .66)) # 37 and 47
+
+```
+
+```{r create high and low groups}
+CCBH_sortbyMHC <- arrange(CCBH, MHC_Tot)
+
+# checking sample size for the tertile split
+low  <- sum(CCBH_sortbyMHC$MHC_Tot < 37) # 145
+mid  <- sum(CCBH_sortbyMHC$MHC_Tot >= 37 & CCBH_sortbyMHC$MHC_Tot <= 47) # 153
+high <- sum(CCBH_sortbyMHC$MHC_Tot > 47) # 150
+
+# subsetting into three samples
+low2 <- subset(CCBH_sortbyMHC, MHC_Tot < 37) # 
+mid2 <- subset(CCBH_sortbyMHC, MHC_Tot >= 37 & MHC_Tot <= 47)
+high2 <- subset(CCBH_sortbyMHC, MHC_Tot > 47)
+
+low_ppt <- unique(low2$subject)
+mid_ppt <- unique(mid2$subject)
+high_ppt <- unique(high2$subject)
+
+
+# selecting only the variables for inclusion in the networks
+low3  <- low2[,c(7,8,9,11,12,13,14,16,17)]
+mid3  <- mid2[,c(7,8,9,11,12,13,14,16,17)]
+high3 <- high2[,c(7,8,9,11,12,13,14,16,17)]
+
+# changing variable names for interpretability
+variable_names  <- c("AB_Ang", "AB_Hap", "AB_Pain" ,"IB_S_Pos", "IB_N_Pos", "IB_S_Neg", "IB_N_Neg", "MB_Pos", "MB_Neg")
+colnames(low3)  <- variable_names
+colnames(mid3)  <- variable_names
+colnames(high3) <- variable_names
+
+```
+
+```{r glasso networks}
+# estimate the networks
+glasso_low  <- estimateNetwork(low3[,1:9], default = "EBICglasso", tuning = .25)
+glasso_mid  <- estimateNetwork(mid3[,1:9], default = "EBICglasso", tuning = .25)
+glasso_high  <- estimateNetwork(high3[,1:9], default = "EBICglasso", tuning = .25)
+
+low_glas_weights <- glasso_low$graph
+colnames(low_glas_weights) <- variable_names
+rownames(low_glas_weights) <- variable_names
+mid_glas_weights <- glasso_mid$graph
+colnames(mid_glas_weights) <- variable_names
+rownames(mid_glas_weights) <- variable_names
+high_glas_weights <- glasso_high$graph
+colnames(high_glas_weights) <- variable_names
+rownames(high_glas_weights) <- variable_names
+
+
+max_glass <- max(low_glas_weights[which(low_glas_weights != 1)], mid_glas_weights[which(mid_glas_weights != 1)], high_glas_weights[which(high_glas_weights != 1)]) # returns highest weight in the three samples' correlation matrices
+
+
+write.csv(low_glas_weights, "./Apendices/low_glasso_weights.csv")
+write.csv(mid_glas_weights, "./Apendices/mid_glasso_weights.csv")
+write.csv(high_glas_weights, "./Apendices/high_glasso_weights.csv")
+
+
+
+
+# plot the three networks
+layout_common <- averageLayout(glasso_low,glasso_mid,glasso_high) # this is now the common layout for each figure
+
+layout(t(1:3))
+plot(glasso_low, layout = layout_common, title = "low - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+plot(glasso_mid, layout = layout_common, title = "mid - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+plot(glasso_high, layout = layout_common, title = "high - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+
+
+
+# look at the global density
+sum(abs(glasso_low$graph))/2
+sum(abs(glasso_mid$graph))/2
+sum(abs(glasso_high$graph))/2
+
+# plot the low and high sample networks
+layout(t(1:2))
+plot(glasso_low, layout = layout_common, title = "low - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+plot(glasso_high, layout = layout_common, title = "high - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+
+
+# save this plot
+
+Cairo::Cairo(file="twoglasso.png", 
+      type="png",
+      bg = "white",
+      units="in", 
+      width=16, 
+      height=8, 
+      pointsize=12, 
+      dpi=144)
+layout(t(1:2))
+
+plot(glasso_low, layout = layout_common, title = "low - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+plot(glasso_high, layout = layout_common, title = "high - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+
+dev.off()
+
+
+
+```
+
+### network comparisons
+
+```{r networkcomparisontest, results='hide'}
+lh <- NCT(low3, high3, it=1000, gamma = .25, binary.data=FALSE)
+lm <- NCT(low3, mid3, it=1000, gamma = .25, binary.data=FALSE)
+mh <- NCT(mid3, high3, it=1000, gamma = .25, binary.data=FALSE)
+
+lh$glstrinv.pval
+lh$nwinv.pval
+
+lm$glstrinv.pval
+lm$nwinv.pval
+
+mh$glstrinv.pval
+mh$nwinv.pval
+```
+
+
+results from the NCT show that the low group differs from the high group (strength p = `r lh$glstrinv.pval` and biggest edge difference p = `r lh$nwinv.pval`) and the mid group perhaps differed (global strength may not survive multiple comparisons though, and max diff was n.s different. ). The mid and high groups do not differ. 
+
+
+
+```{r trying to figure out optimalgraph, eval=FALSE}
+
+modSelect_0 <- ggmModSelect(cor_auto(low3), nrow(low3), nCores = 12, start = "glasso", considerPerStep = "all", gamma = 0)
+
+qgraph(modSelect_0$graph, layout = "spring", theme = "colorblind", 
+       title = "ggmModSelect (gamma = 0)", cut = 0)
+
+modSelect_0.5 <- ggmModSelect(cor_auto(low3), nrow(low3), gamma = 0.5, nCores = 12, start = "glasso", considerPerStep = "all")
+
+qgraph(modSelect_0.5$graph, layout = "spring", theme = "colorblind", 
+       title = "ggmModSelect (gamma = 0)", cut = 0)
+
+```
+
+###mgm
+
+we then explored this in a more robust way using mgm...
+
+#### im mainly curious what this is
+
+seriously what does the four hashes mean???
+
+```{r mgm, results='hide'}
+
+# put low and high group into a single dataframe
+low3$MH <- 0
+high3$MH <- 1
+
+full <- rbind(low3, high3)
+
+fit_obj <- mgm(data = full,
+  type = c(rep("g", 9), "c"),
+  level = c(rep(1, 9), 2),
+  ruleReg = "OR",
+  k = 2,
+  binarySign = TRUE)
+
+
+
+p_obj <- predict(fit_obj, full,
+errorCat = c("CC","nCC","CCmarg"),
+errorCon = c("R2"))
+
+
+error_list <- list() # List for ring-segments
+for(i in 1:9) error_list[[i]] <- p_obj$errors[i,2]
+beyondmarg <- p_obj$errors[10,3]-p_obj$errors[10,5]
+error_list[[10]] <- c(p_obj$errors[10,5],beyondmarg)
+
+color_list <- list() # List for Colors
+for(i in 1:9) color_list[[i]] <- "#90B4D4"
+color_list[[10]] <- c("#ffa500", "#ff4300")
+
+library(qgraph)
+qgraph(fit_obj$pairwise$wadj, pie = error_list,
+  layout="spring", labels = colnames(full),
+  pieColor = color_list, label.cex = .9,
+  edge.color = fit_obj$pairwise$edgecolor,
+  curveAll = TRUE, curveDefault = .6,
+  cut = 0, labels = col(full))
+
+
+
+
+
+
+
+```
+
+```{r, results='hide'}
+
+fit_obj2 <- mgm(data = full,
+  type = c(rep("g", 9), "c"),
+  level = c(rep(1, 9), 2),
+  ruleReg = "OR",
+  k = 2,
+  binarySign = TRUE,
+  moderators = c(10)#,
+  #lambdaSel = "EBIC",
+  #lambdaGam = .5
+)
+
+# n interactions
+n_int <- length(fit_obj2$interactions$weightsAgg[[2]])
+
+# for the predictability aspect
+p_obj2 <- predict(fit_obj2, full,
+errorCat = c("CC","nCC","CCmarg"),
+errorCon = c("R2"))
+
+
+error_list2 <- list() # List for ring-segments
+for(i in 1:9) error_list2[[i]] <- p_obj2$errors[i,2]
+beyondmarg2 <- p_obj2$errors[10,3]-p_obj2$errors[10,5]
+error_list2[[10]] <- c(p_obj2$errors[10,5],beyondmarg2)
+
+color_list2 <- list() # List for Colors
+for(i in 1:9) color_list2[[i]] <- "#90B4D4"
+color_list2[[10]] <- c("#ffa500", "#ff4300")
+
+# plotting predictability
+qgraph(fit_obj2$pairwise$wadj, pie = error_list2,
+  layout="spring", labels = colnames(full),
+  pieColor = color_list2, label.cex = .9,
+  edge.color = fit_obj2$pairwise$edgecolor,
+  curveAll = TRUE, curveDefault = .6,
+  cut = 0, labels = col(full))
+
+# plotting the interactions
+FactorGraph(object = fit_obj2,
+edge.labels = FALSE,
+PairwiseAsEdge = TRUE,
+labels = colnames(full),
+title = "fit2 with interactions")
+# note: 6 interactions
+
+
+# #playing
+# FactorGraph(object = fit_obj2,
+# edge.labels = FALSE,
+# PairwiseAsEdge = TRUE,
+# FactorLabels = TRUE,
+# Nodewise = TRUE, 
+# labels = colnames(full))
+
+# plotting the interactions and the predictability
+img <- FactorGraph(object = fit_obj2,
+edge.labels = FALSE,
+PairwiseAsEdge = TRUE,
+labels = colnames(full),
+pie = c(error_list, rep(0,n_int)),
+pieBorder = c(rep(.2,10),rep(0,n_int)),
+pieColor = c(color_list2,rep(0,n_int)),
+vsize = 2,
+vsize2 = .5,
+label.cex = 1,
+repulsion = .63)
+
+
+# quick save
+
+Cairo::Cairo(file="mgmtest.png", 
+      type="png",
+      bg = "white",
+      units="in", 
+      width=16, 
+      height=8, 
+      pointsize=12, 
+      dpi=144)
+
+img <- FactorGraph(object = fit_obj2,
+edge.labels = FALSE,
+PairwiseAsEdge = TRUE,
+labels = colnames(full),
+pie = c(error_list, rep(0,n_int)),
+pieBorder = c(rep(.2,10),rep(0,n_int)),
+pieColor = c(color_list2,rep(0,n_int)),
+vsize = 2,
+vsize2 = .5,
+label.cex = 1,
+repulsion = .63)
+
+dev.off()
+
+
+```
+
+``` {r centrality}
+
+
+```
+
+
+```{r stability, results='hide'}
+boot1 <- estimateNetwork(data = full,
+                  default = "mgm",
+                   type = c(rep("g", 9), "c"),
+                   level = c(rep(1, 9), 2),
+                   rule = "OR",
+                   binarySign = TRUE,
+                   moderators = c(10),
+                   criterion = "CV")
+ 
+ plot(boot1)
+ 
+ 
+ 
+ boot2 <- bootnet(boot1, nBoots = 50, nCores = parallel::detectCores())
+ 
+ plot(boot2, order = "sample")
+ 
+  boot3 <- bootnet(boot1, nBoots = 50, nCores = parallel::detectCores(), type = "case")
+ 
+ plot(boot2, "strength", plot = "difference")
+ plot(boot2, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
+
+
+```
+
+
+
+
+```{r, results='hide'}
+# does it work for linear moderators????
+
+testing <- CCBH_sortbyMHC %>%
+  select(5,7,8,9,11,12,13,14,16,17) %>%
+  rename(MH = MHC_Tot,
+         AB_Ang = DP_angry,
+         AB_Hap = DP_happy,
+         AB_Pain  = DP_pain,
+         IB_S_Pos = Pos_Soc,
+         IB_N_Pos = Pos_nonsoc,
+         IB_S_Neg = Neg_soc,
+         IB_N_Neg = Neg_nonsoc,
+         MB_Pos = MEM_pos,
+         MB_Neg = MEM_neg)
+  
+
+fit_obj3 <- mgm(data = testing,
+  type = c(rep("g", 10)),
+  level = c(rep(1, 10)),
+  ruleReg = "OR",
+  k = 2,
+  binarySign = TRUE,
+  moderators = c(1)#,
+  #lambdaSel = "EBIC",
+  #lambdaGam = .5
+)
+
+
+
+# for the predictability aspect
+p_obj3 <- predict(fit_obj3, full,
+errorCat = c("CC","nCC","CCmarg"),
+errorCon = c("R2"))
+
+
+error_list <- list() # List for ring-segments
+for(i in 1:9) error_list[[i]] <- p_obj2$errors[i,2]
+beyondmarg <- p_obj2$errors[10,3]-p_obj2$errors[10,5]
+error_list[[10]] <- c(p_obj2$errors[10,5],beyondmarg)
+
+color_list <- list() # List for Colors
+for(i in 1:9) color_list[[i]] <- "#90B4D4"
+color_list[[10]] <- c("#ffa500", "#ff4300")
+
+# plotting predictability
+qgraph(fit_obj2$pairwise$wadj, pie = error_list,
+  layout="spring", labels = colnames(full),
+  pieColor = color_list, label.cex = .9,
+  edge.color = fit_obj2$pairwise$edgecolor,
+  curveAll = TRUE, curveDefault = .6,
+  cut = 0, labels = col(full))
+
+# plotting the interactions
+FactorGraph(object = fit_obj3,
+edge.labels = FALSE,
+PairwiseAsEdge = TRUE,
+labels = colnames(testing),
+title = "fit3 with full linear")
+
+
+
+
+## note to self, I also need to try to extract the layout of the nodes (only the variables not the interaction nodes) to try to keep them consistent, if possible. 
+```
+
+
+# Results
+
+## glasso networks
+
+## moderated networks
+
+# Discussion
+
+
+\newpage
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
