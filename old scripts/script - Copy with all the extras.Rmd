@@ -75,11 +75,6 @@ library("NetworkComparisonTest") # for network model comparisons
 library("parallel") # used to get number of cores for bootnet
 library("gridExtra") # used for combining plots
 library("Cairo")
-library("splithalf") # for internal consistency of measures
-library("psych")
-library("scales") # for plotting the interaction figures
-library("RColorBrewer") # for plotting the interaction figures
-
 
 
 ```
@@ -91,10 +86,6 @@ demographics <- read.spss("Data/W1_demographics.sav", to.data.frame = TRUE)
 scores2 <- read.spss("Data/W1_Q2.sav", to.data.frame = TRUE)
 AIBQ <- read.spss("Data/W1_AIBQ.sav", to.data.frame = TRUE)
 Memory <- read.spss("Data/W1_SRET.sav", to.data.frame = TRUE)
-AB_raw <- read.spss("Data/Dot-Probe SPSS Start.sav", to.data.frame = TRUE)
-AIBQ_raw <- read.spss("Data/Start_AIBQ_rawdata.sav", to.data.frame = TRUE)
-
-
 ```
 
 
@@ -132,238 +123,6 @@ sd(CCBH$MHC_Tot)
 quantile(CCBH$MHC_Tot, c(.33, .66)) # 37 and 47
 
 ```
-
-```{r reliability stuff}
-# attention bias
-
-# specific recodings
-AB_raw$subject <- ifelse(AB_raw$subject == "315177", "351177", AB_raw$subject)
-AB_raw$subject <- ifelse(AB_raw$subject == "316384", "361384", AB_raw$subject)
-AB_raw$subject <- ifelse(AB_raw$subject == "551153", "331153", AB_raw$subject)
-AB_raw$subject <- ifelse(AB_raw$subject == "319519", "391519", AB_raw$subject)
-
-# this for the subjects that were in group 371 not 361
-
-AB_raw2 <- AB_raw %>%
-                separate(subject, sep = 3, into = c("first", "second"))
-AB_raw2$first <- ifelse(AB_raw2$first == "361" & as.numeric(AB_raw2$second) >= 334 & as.numeric(AB_raw2$second) <= 440, "371", AB_raw2$first)
-AB_raw2$subject <- paste(AB_raw2$first, AB_raw2$second, sep = "")  
-
-
-# finally, remove data from participants that had <70 accuracy and other reasons
-
-AB_raw2 <-   AB_raw2 %>% 
-                filter(subject != 311002,
-                       subject != 311019,
-                       subject != 311028,
-                       subject != 301036,
-                       subject != 301041,
-                       subject != 331126,
-                       subject != 381491,
-                       subject != 381441,
-                       subject != 381442,
-                       subject != 381443,
-                       subject != 381444,
-                       subject != 381478 )
-
-AB_raw2 <- filter(AB_raw2, subject %in% unique(CCBH$subject))
-
-# now, our participant list in the CCBH data will have the same subjects as the AB_raw2
-
-# quick check
-data.frame(name = unique(AB_raw2$subject) %in% unique(CCBH$subject),
-           number = unique(AB_raw2$subject))
-
-# need to remove those without compete dataframes so that reliability is calculated fro only the final sample
-
-
-# ensuring that the blockcode only contains the actual condition
-AB_raw2$blockcode <- ifelse(grepl("pain", AB_raw2$blockcode), "pain", 
-                     ifelse(grepl("angry", AB_raw2$blockcode), "angry",
-                     ifelse(grepl("happy", AB_raw2$blockcode), "happy", "")))
-
-# ensuring that the congruent and incongruent labels are of the correct name fir the script
-AB_raw2$congruency <- ifelse(grepl("incongruent", AB_raw2$trialcode), "Incongruent", "Congruent")
-
-# trimming as per protocol
-AB_raw2 <- AB_raw2 %>%
-  group_by(subject) %>%
-  filter(blockcode != "") %>%
-  filter(correct == 1) %>%
-  filter(latency >= 200, latency <= 3000) %>%
-  group_by(subject, blockcode, congruency) %>%
-  mutate(high = mean(latency)+(3*sd(latency)),
-         low = mean(latency)-(3*sd(latency))) %>%
-  filter(latency >= low, latency <= high) %>%
-  ungroup() %>%
-  as.data.frame()
-
-AB_reliability <- splithalf(data = AB_raw2, 
-                            outcome = "RT",
-                            score = "difference",
-                      conditionlist = c("happy", "angry", "pain"),
-                      halftype = "random",
-                      permutations = 5000,
-                      var.RT = "latency",
-                      var.condition = "blockcode",
-                      var.participant = "subject", 
-                      var.trialnum = "trialnum",
-                      var.compare = "congruency",
-                      compare1 = "Congruent",
-                      compare2 = "Incongruent" )
-
-
- AB_reliability[,-2:-5]
-
-
-####  AIBQ
-
-# some renaming first
-# specific recodings
-AIBQ_raw$subject <- ifelse(AIBQ_raw$subject == "315177", "351177", AIBQ_raw$subject)
-AIBQ_raw$subject <- ifelse(AIBQ_raw$subject == "316384", "361384", AIBQ_raw$subject)
-AIBQ_raw$subject <- ifelse(AIBQ_raw$subject == "551153", "331153", AIBQ_raw$subject)
-AIBQ_raw$subject <- ifelse(AIBQ_raw$subject == "319519", "391519", AIBQ_raw$subject)
-
-# this for the subjects that were in group 371 not 361
-
-AIBQ_raw2 <- AIBQ_raw %>%
-                separate(subject, sep = 3, into = c("first", "second"))
-AIBQ_raw2$first <- ifelse(AIBQ_raw2$first == "361" & as.numeric(AIBQ_raw2$second) >= 334 & as.numeric(AIBQ_raw2$second) <= 440, "371", AIBQ_raw2$first)
-AIBQ_raw2$subject <- paste(AIBQ_raw2$first, AIBQ_raw2$second, sep = "")  
-
-# finally, remove data from participants that had <70 accuracy and other reasons
-
-AIBQ_raw2 <-   AIBQ_raw2 %>% 
-                filter(subject != 311002,
-                       subject != 311019,
-                       subject != 311028,
-                       subject != 301036,
-                       subject != 301041,
-                       subject != 331126,
-                       subject != 381491,
-                       subject != 381441,
-                       subject != 381442,
-                       subject != 381443,
-                       subject != 381444,
-                       subject != 381478 )
-
-AIBQ_raw2 <- filter(AIBQ_raw2, subject %in% unique(CCBH$subject))
-
-
-# checking
-
-unique(AIBQ_raw2$subject) %in% unique(CCBH$subject)
-
-# social positive
-
-soc_pos <- AIBQ_raw2 %>%
-  select("sit2pos_response", "sit4pos_response", "sit7pos_response", "sit9pos_response", "sit10pos_response") %>%
-  psych::alpha() %>%
-  capture.output()
-
-soc_pos_o <- AIBQ_raw2 %>%
-  select("sit2pos_response", "sit4pos_response", "sit7pos_response", "sit9pos_response", "sit10pos_response") %>%
-  psych::omega()
-
-# social negative
-
-soc_neg <- AIBQ_raw2 %>%
-  select("sit2neg_response", "sit4neg_response", "sit7neg_response", "sit9neg_response", "sit10neg_response") %>%
-  psych::alpha() %>%
-  capture.output()
-
-soc_neg_o <- AIBQ_raw2 %>%
-  select("sit2neg_response", "sit4neg_response", "sit7neg_response", "sit9neg_response", "sit10neg_response") %>%
-  psych::omega()
-
-# nonsocial positive
-# 1, 3, 5, 6, 8, 
-
-nonsoc_pos <- AIBQ_raw2 %>%
-  select("sit1pos_response", "sit3pos_response", "sit5pos_response", "sit6pos_response", "sit8pos_response") %>%
-  psych::alpha() %>%
-  capture.output()
-
-nonsoc_pos_o <- AIBQ_raw2 %>%
-  select("sit1pos_response", "sit3pos_response", "sit5pos_response", "sit6pos_response", "sit8pos_response") %>%
-  psych::omega()
-
-# nonsocial negative
-
-nonsoc_neg <- AIBQ_raw2 %>%
-  select("sit1neg_response", "sit3neg_response", "sit5neg_response", "sit6neg_response", "sit8neg_response") %>%
-  psych::alpha() %>%
-  capture.output()
-
-nonsoc_neg_o <- AIBQ_raw2 %>%
-  select("sit1neg_response", "sit3neg_response", "sit5neg_response", "sit6neg_response", "sit8neg_response") %>%
-  psych::omega()
-
-
-
-
-AIBQ_reliability_table <- data.frame(                                     social = c("social","social","nonsocial","nonsocial"),
-                                     valence = c("pos", "neg", "pos", "neg"),
-                                     alphas = c(soc_pos[11],
-                                                soc_neg[11],
-                                                nonsoc_pos[11],
-                                                nonsoc_neg[11]),
-                                     omegas = c(round(soc_pos_o$omega.tot,2),
-                                                round(soc_neg_o$omega.tot,2),
-                                                round(nonsoc_pos_o$omega.tot,2),
-                                                round(nonsoc_neg_o$omega.tot,2))) %>%
-                  separate(alphas, sep = " ", into = c("lower", "alpha", "upper"))
-
-
-
-
-#####   reliability for the MHC
-
-MHC_only <- select(scores2, c("Master_subject",
-                              "MCSHCSQ001",
-                              "MCSHCSQ002",
-                              "MCSHCSQ003",
-                              "MCSHCSQ004",
-                              "MCSHCSQ005",
-                              "MCSHCSQ006",
-                              "MCSHCSQ007",
-                              "MCSHCSQ008",
-                              "MCSHCSQ009",
-                              "MCSHCSQ010",
-                              "MCSHCSQ011",
-                              "MCSHCSQ012",
-                              "MCSHCSQ013",
-                              "MCSHCSQ014"))
-
-MHC_only <- filter(MHC_only, Master_subject %in% unique(CCBH$subject))
-
-# alphas for scales for each group
-MHC_alpha <- MHC_only %>%
-  filter(Master_subject %in% unique(CCBH$subject)) %>%
-  select(-Master_subject) %>%
-  psych::alpha() %>%
-  capture.output()
-
-MHC_alpha[11]
-
-MHC_omega <- MHC_only %>%
-  filter(Master_subject %in% unique(CCBH$subject)) %>%
-  select(-Master_subject) %>%
-  psych::omega()
-
-MHC_omega$omega.tot
-
-
-```
-
-```{r table1}
-
-
-
-```
-
-
 
 ```{r create high and low groups}
 # checking sample size for the tertile split
@@ -425,22 +184,22 @@ rownames(high_glas_weights) <- variable_names
 max_glass <- max(low_glas_weights[which(low_glas_weights != 1)], mid_glas_weights[which(mid_glas_weights != 1)], high_glas_weights[which(high_glas_weights != 1)]) # returns highest weight in the three samples' correlation matrices
 
 
-#write.csv(low_glas_weights, "./Apendices/low_glasso_weights.csv")
-#write.csv(mid_glas_weights, "./Apendices/mid_glasso_weights.csv")
-#write.csv(high_glas_weights, "./Apendices/high_glasso_weights.csv")
+write.csv(low_glas_weights, "./Apendices/low_glasso_weights.csv")
+write.csv(mid_glas_weights, "./Apendices/mid_glasso_weights.csv")
+write.csv(high_glas_weights, "./Apendices/high_glasso_weights.csv")
 
-# # plot the three networks
- layout_common <- averageLayout(glasso_low,glasso_mid,glasso_high) # this is now the common layout for each figure
-# 
-# layout(t(1:3))
-# plot(glasso_low, layout = layout_common, title = "low - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
-# plot(glasso_mid, layout = layout_common, title = "mid - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
-# plot(glasso_high, layout = layout_common, title = "high - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
-# 
-# # look at the global density
-# sum(abs(glasso_low$graph))/2
-# sum(abs(glasso_mid$graph))/2
-# sum(abs(glasso_high$graph))/2
+# plot the three networks
+layout_common <- averageLayout(glasso_low,glasso_mid,glasso_high) # this is now the common layout for each figure
+
+layout(t(1:3))
+plot(glasso_low, layout = layout_common, title = "low - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+plot(glasso_mid, layout = layout_common, title = "mid - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+plot(glasso_high, layout = layout_common, title = "high - MH", details = T, theme = "colorblind", labels = variable_names, vsize = 10, maximum = max_glass)
+
+# look at the global density
+sum(abs(glasso_low$graph))/2
+sum(abs(glasso_mid$graph))/2
+sum(abs(glasso_high$graph))/2
 
 # plot the low and high sample networks
 layout(t(1:2))
@@ -464,8 +223,6 @@ plot(glasso_high, layout = layout_common, title = "high - MH plot", details = T,
 
 dev.off()
 
-layout(1)
-
 
 ```
 
@@ -482,25 +239,39 @@ plot(glasso_high, layout = layout_common, title = "high - MH plot", details = T,
 
 ```{r networkcomparisontest, results='hide'}
 lh <- NCT(low3[,1:6], high3[,1:6], it=1000, gamma = .5, binary.data=FALSE)
-#lm <- NCT(low3[,1:6], mid3[,1:6], it=1000, gamma = .5, binary.data=FALSE)
-#mh <- NCT(mid3[,1:6], high3[,1:6], it=1000, gamma = .5, binary.data=FALSE)
+lm <- NCT(low3[,1:6], mid3[,1:6], it=1000, gamma = .5, binary.data=FALSE)
+mh <- NCT(mid3[,1:6], high3[,1:6], it=1000, gamma = .5, binary.data=FALSE)
 ```
 
-```{r NCT output}
+```{r}
 lh$glstrinv.pval
 lh$nwinv.pval
 
-#lm$glstrinv.pval
-#lm$nwinv.pval
+lm$glstrinv.pval
+lm$nwinv.pval
 
-#mh$glstrinv.pval
-#mh$nwinv.pval
+mh$glstrinv.pval
+mh$nwinv.pval
 ```
 
 We compared the estimated networks using NetworkComparisonTest with 1000 iterations. Global strength in the high MH group (`r sum(abs(glasso_high$graph))/2`) differed from that in the low MH group (`r sum(abs(glasso_low$graph))/2`), _p_ = `r printp(lh$glstrinv.pval)`. There was no significant difference between global strength in the low MH group and the mid MH group (`r sum(abs(glasso_mid$graph))/2`), _p_ = `r printp(lm$glstrinv.pval)`; nor between the mid MH and high MH groups, _p_ = `r printp(mh$glstrinv.pval)`.
 
 \newpage
 
+
+```{r trying to figure out optimalgraph, eval=FALSE}
+
+modSelect_0 <- ggmModSelect(cor_auto(low3), nrow(low3), nCores = 12, start = "glasso", considerPerStep = "all", gamma = 0)
+
+qgraph(modSelect_0$graph, layout = "spring", theme = "colorblind", 
+       title = "ggmModSelect (gamma = 0)", cut = 0)
+
+modSelect_0.5 <- ggmModSelect(cor_auto(low3), nrow(low3), gamma = 0.5, nCores = 12, start = "glasso", considerPerStep = "all")
+
+qgraph(modSelect_0.5$graph, layout = "spring", theme = "colorblind", 
+       title = "ggmModSelect (gamma = 0)", cut = 0)
+
+```
 
 ## Including Mental Health in the model
 
@@ -662,8 +433,6 @@ dev.off()
 ```
 
 ```{r }
-
-# figure out which one you might want
 FactorGraph(object = fit_obj2,
 edge.labels = FALSE,
 PairwiseAsEdge = TRUE,
@@ -775,18 +544,13 @@ Cairo::Cairo(file="Figures/mgm_MHC_linear_fullsample_nosquarenodes.png",
       height=8, 
       pointsize=12, 
       dpi=144)
-qgraph(fit_obj3$pairwise$wadj * fit_obj3$pairwise$signs,
-       pie = error_list3,
-       layout="spring",
-       labels = colnames(testing),
-       pieColor = color_list3,
-       label.cex = .9,
-       curveAll = TRUE, 
-       curveDefault = .6,
-       cut = 0, 
-       labels = colnames(testing),
-       title = "MGM plot", 
-       theme = "colorblind")
+qgraph(fit_obj3$pairwise$wadj, pie = error_list3,
+  layout="spring", labels = colnames(testing),
+  pieColor = color_list3, label.cex = .9,
+  edge.color = fit_obj3$pairwise$edgecolor,
+  curveAll = TRUE, curveDefault = .6,
+  cut = 0, labels = colnames(testing),
+  title = "MGM plot")
 dev.off()
 
 
@@ -807,8 +571,6 @@ title = "full sample - mental health as a linear moderator")
 
 
 ```{r}
-# this one might not be needed as plotting without the interaction nodes would be much much more visually pleasing
-
 Cairo::Cairo(file="Figures/mgm_MHC_linear_fullsample.png", 
       type="png",
       bg = "white",
@@ -831,7 +593,115 @@ dev.off()
 
 this network shows largely the same pattern as splitting by the high and low group. Some of the edges appear to be moderated by mental health. 
 
-### moderated network
+
+```{r, eval = FALSE}
+
+mgm3_out <- 1:200
+
+count2 <- 1
+
+for(i in 1:200) {
+
+fit_obj3 <- mgm(data = testing,
+  type = c(rep("g", 7)),
+  level = c(rep(1, 7)),
+  ruleReg = "OR",
+  k = 2,
+  binarySign = TRUE,
+  moderators = c(1)#,
+  #lambdaSel = "EBIC",
+  #lambdaGam = .5
+)
+
+mgm3_out[i] <- length(fit_obj3$interactions$weightsAgg[[2]])
+
+count2 <- count2 + 1
+  
+  
+}
+
+mgm3_out
+hist(mgm3_out)
+
+
+```
+
+
+## This was followed by examining the stability of the network
+
+
+```{r stability}
+boot1 <- estimateNetwork(data = testing,
+                  default = "mgm",
+                   type = c(rep("g", 7)),
+                   level = c(rep(1, 7)),
+                   rule = "OR",
+                   binarySign = TRUE,
+                   moderators = c(1),
+                   criterion = "CV")
+ 
+
+# plot(boot1)
+
+```
+
+```{r centralityplot}
+ 
+centralityPlot(boot1, labels = colnames(testing))
+
+```
+
+
+The centrality plot provides an indication of how important each variable is to the network. 
+
+```{r bootnet}
+ 
+boot2 <- bootnet(boot1, nBoots = 200, nCores = parallel::detectCores())
+ 
+```
+
+```{r edge_stability}
+
+ plot(boot2, order = "sample", plot = "area")
+
+```
+
+This plot provides a visualisation of the bootstrapped edge strenghts of all edges
+
+```{r }
+ plot(boot2, "strength", plot = "difference")
+
+```
+
+I'm not 100% what this next one is just yet
+
+```{r edge_differences}
+
+plot(boot2, "edge", plot = "difference", onlyNonZero = TRUE, order = "sample")
+
+```
+
+this provides an indication of all differences between edges. 
+
+```{r centrality_bootnet}
+
+boot3 <- bootnet(boot1, nBoots = 200, nCores = parallel::detectCores(), type = "case")
+
+```
+
+```{r centrality_stability}
+
+plot(boot3)
+
+```
+
+plots the stability of the centrality indices, and next are the actual indices
+
+```{r printcorestanility}
+corStability(boot3)
+```
+
+
 
 ```{r resampling}
 
@@ -841,7 +711,7 @@ res_obj <- resample(object = fit_obj3,
 
 ```
 
-```{r adapting plotRes}
+```{r plotRes}
 
 # Adaptation of the plotRes code to extract the label order
 
@@ -1177,8 +1047,6 @@ labels2 = colnames(testing)
 
 ```{r output table}
 
-# extract data from the previous 2 figures
-
 out_table <- data.frame(edge = label_vec,
                         V1 = tar_mat[,1],
                         V1 = tar_mat[,2],
@@ -1196,15 +1064,15 @@ out_table <- data.frame(edge = label_vec,
 
 
 
-```{r plotting the moderated network interactions}
-
+```{r}
+library("scales")
 
 levelorder <- out_table$edge
 
+library(RColorBrewer)
 
-
-cols <- brewer.pal(n = 3, name = "RdBu") 
-display.brewer.pal(n = 3, name = "RdBu")
+cols <- brewer.pal(n = 5, name = "RdBu") 
+display.brewer.pal(n = 5, name = "RdBu")
 
 
 # edges
@@ -1224,21 +1092,6 @@ edgesplot <- ggplot(data = out_table,
     geom_point(colour = "white", size = 7, shape = "circle", y = .55) +
     geom_text(aes(label = sub("^(-?)0.", "\\1.", sprintf("%.2f", out_table$edge_prop)), y = .55), size = 3)
   
-#################
-
-ggplot(data = out_table,
-       aes(x = reorder(edge, edge_mean), y = edge_mean, group = 1, level = levelorder)) +
-    geom_ribbon(data = out_table, aes(ymin = edge_low95, ymax = edge_high95, group = 1), fill = "grey80", alpha = .5) +
-  coord_flip() +
-  geom_line(aes(colour = edge_mean), size = 1.5) +
-  geom_point(aes(colour = edge_mean), size = 3) +
-  scale_colour_gradient2(midpoint = 0) +
-  geom_hline(yintercept = 0, linetype="dashed", 
-                color = "black", size= .5) +
-  theme(axis.title.y = element_blank()) +
-    geom_point(colour = "white", size = 7, shape = "circle", y = .55) +
-    geom_text(aes(label = sub("^(-?)0.", "\\1.", sprintf("%.2f", out_table$edge_prop)), y = .55), size = 3)
-
   
 # interactions
 
