@@ -114,6 +114,31 @@ This is my abstract
 \begin{document}
 \maketitle
 
+\begin{table}[tbp]
+\begin{center}
+\begin{threeparttable}
+\caption{\label{tab:table1}}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+ & \multicolumn{1}{c}{mean} & \multicolumn{1}{c}{sd} & \multicolumn{1}{c}{       (1)} & \multicolumn{1}{c}{       (2)} & \multicolumn{1}{c}{       (3)} & \multicolumn{1}{c}{       (4)} & \multicolumn{1}{c}{       (5)} & \multicolumn{1}{c}{       (6)} & \multicolumn{1}{c}{       (7)}\\
+\midrule
+MH (1) & 40.72 & 12.58 &  &  &  &  &  &  & \\
+IB\_S\_Pos (2) & 2.55 & 0.62 & .37 &  &  &  &  &  & \\
+IB\_N\_Pos (3) & 3.53 & 0.64 & .33 & .40 &  &  &  &  & \\
+IB\_S\_Neg (4) & 3.29 & 0.88 & -.25 & -.26 & -.17 &  &  &  & \\
+IB\_N\_Neg (5) & 3.17 & 0.72 & -.15 & -.00 & -.19 & .51 &  &  & \\
+MB\_Pos (6) & 6.83 & 2.87 & .40 & .30 & .21 & -.24 & -.15 &  & \\
+MB\_Neg (7) & 2.50 & 2.34 & -.43 & -.28 & -.25 & .42 & .24 & -.29 & \\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{center}
+\end{table}
+
+Background:
+
+The data are drawn from the CogBIAS longitudinal study (wave 1 only). Analysed are the DVs from the interpretation bias task, memory bias task, and mental health questionnaire.
+
 \hypertarget{comparing-groups-high-and-low-in-positive-mental-health}{%
 \subsection{Comparing groups high and low in positive mental health}\label{comparing-groups-high-and-low-in-positive-mental-health}}
 
@@ -124,7 +149,7 @@ Figure 1 presents regularised partial correlations amongst interpretation and me
 \hypertarget{network-comparisons}{%
 \subsubsection{network comparisons}\label{network-comparisons}}
 
-We compared the estimated networks using NetworkComparisonTest with 1000 iterations. Global strength in the high MH group (0.37) differed from that in the low MH group (1.70), \emph{p} = .013. There was no significant difference between global strength in the low MH group and the mid MH group (0.73), \emph{p} = .345; nor between the mid MH and high MH groups, \emph{p} = .361.
+We compared the estimated networks using NetworkComparisonTest with 1000 iterations. Global strength in the high MH group (0.37) differed from that in the low MH group (1.70), \emph{p} = .015. There was no significant difference between global strength in the low MH group and the mid MH group (0.73).
 
 \newpage
 
@@ -135,44 +160,14 @@ We explored the difference in models between high and low groups using the mgm p
 
 Note. the shaded area of the \enquote{pie} is the predicability of that node, i.e.~the variance explained in that variable by the rest of the network. (I also need to include a more detailed explanation of why MH is different here as a categorical variable).
 
-\includegraphics{script_files/figure-latex/mgm-1.pdf}
-
-\hypertarget{we-then-set-mental-health-to-be-a-moderator-of-the-network}{%
-\subsection{we then set mental health to be a moderator of the network}\label{we-then-set-mental-health-to-be-a-moderator-of-the-network}}
-
-\includegraphics{script_files/figure-latex/unnamed-chunk-3-1.pdf}
-
-The square nodes link to three nodes. First, they each link to MH as the moderating variable. The two other nodes linked to indicate the edge that is moderated by the MH variable, e.g.~the relationship between Positive and Negative memory biases.
-
-\hypertarget{we-followed-this-by-using-mh-as-a-linear-moderator-and-included-the-full-sample}{%
-\subsection{we followed this by using MH as a linear moderator, and included the full sample}\label{we-followed-this-by-using-mh-as-a-linear-moderator-and-included-the-full-sample}}
-
-\includegraphics{script_files/figure-latex/unnamed-chunk-5-1.pdf}
-
 this network shows largely the same pattern as splitting by the high and low group. Some of the edges appear to be moderated by mental health.
 
-\hypertarget{this-was-followed-by-examining-the-stability-of-the-network}{%
-\subsection{This was followed by examining the stability of the network}\label{this-was-followed-by-examining-the-stability-of-the-network}}
+\hypertarget{moderated-network}{%
+\subsubsection{moderated network}\label{moderated-network}}
 
-\includegraphics{script_files/figure-latex/centralityplot-1.pdf}
+\includegraphics{script_files/figure-latex/plotting the moderated network interactions-1.pdf}
 
-The centrality plot provides an indication of how important each variable is to the network.
-
-\includegraphics{script_files/figure-latex/edge_stability-1.pdf}
-
-This plot provides a visualisation of the bootstrapped edge strenghts of all edges
-
-\includegraphics{script_files/figure-latex/unnamed-chunk-7-1.pdf}
-
-I'm not 100\% what this next one is just yet
-
-\includegraphics{script_files/figure-latex/edge_differences-1.pdf}
-
-this provides an indication of all differences between edges.
-
-\includegraphics{script_files/figure-latex/centrality_stability-1.pdf}
-
-plots the stability of the centrality indices, and next are the actual indices
+\includegraphics{script_files/figure-latex/conditioning the visualisations on mental health-1.pdf}
 
 \newpage
 
