@@ -5,7 +5,6 @@ To do:
 
 * Big target - get methods + results ready to share with the group. 
 
-* Fix issue with AIBQ having 2-3 fewer participants than CCBH. (this is because I removed the same aprticipants as in the DPT reduction due to low accuracy. taking out that removal line keeps CCBH and AIBQ at the same n. But, the DPT is still at 448. Making a minor note of this should be ok I think?) 
 * reformat code to be more readable
 * For the paper
 ** finish description of the LASSO
