@@ -1,6 +1,6 @@
 ---
-title             : "Emotional information-processing correlates of mental health in adolescence: A network analysis approach"
-shorttitle        : ""
+title             : "Emotional information-processing correlates of positive mental health in adolescence: A network analysis approach"
+shorttitle        : "Moderated network analysis of emotional cognitive biases"
 
 author: 
   - name          : "Sam Parsons"
@@ -11,26 +11,28 @@ author:
   - name          : "Annabel Songco"
     affiliation   : "1"
   - name          : "Charlotte Booth"
-    affiliation   : "1"
+    affiliation   : "2"
   - name          : "Elaine Fox"
     affiliation   : "1"
 
 affiliation:
   - id            : "1"
     institution   : "University of Oxford"
+  - id            : "2"
+    institution   : "Imperial College London"
 
 
 authornote: |
-  This work was supported by the European Research Council (ERC) under the European Union’s Seventh Framework Programme (FP7/2007–2013)/ERC grant agreement no: [324176].
-  
+  This work was supported by; the European Research Council (ERC) under the European Union's Seventh Framework Programme (FP7/2007-2013)/ERC grant agreement no: [324176], and the Economic and Social Research Council [ES/R004285/1]
+
   We would like to thank Jonas Haslbeck for his input on estimating moderated network models. We would also like to thank the other instructors at the Psychological Networks Amsterdam Winter School (2019) for their feedback on these analyses, and for suggesting a moderated network approach. 
   
   The data and code used for the analyses, and to generate this manuscript can be found online: https://osf.io/mn5ek/
 
-note: "\\clearpage"
+
 
 abstract: | 
-  The Combined Cognitive Bias Hypothesis proposes that emotional information processing biases associate with each other and may interact to conjointly influence mental health. Yet, little is known about the interrelationships amongst cognitive biases, particularly in adolescence. We used data from the CogBIAS longitudinal study (Booth et al. 2017), including 451 adolescents who completed measures of attention, interpretation, and memory bias, and a positive mental health scale. We used a moderated network modelling approach to examine positive mental health related moderation of the cognitive bias network. Mental health was directly connected to positive and negative memory biases, and positive interpretation biases, but not negative interpretation biases. Further, we observed some mental health related moderation of the network structure. There was a trend for a less connected network with increased mental health. Network approaches allow us to model complex relationships amongst cognitive biases and develop novel hypotheses for future research. 
+  The Combined Cognitive Bias Hypothesis proposes that emotional information processing biases associate with each other and may interact to conjointly influence mental health. Yet, little is known about the interrelationships amongst cognitive biases, particularly in adolescence. We used data from the CogBIAS longitudinal study (Booth et al. 2017), including 451 adolescents who completed measures of attention, interpretation, and memory bias, and a validated measure of general mental health in a typical population. We used a moderated network modelling approach to examine positive mental health related moderation of the cognitive bias network. Mental health was directly connected to positive and negative memory biases, and positive interpretation biases, but not negative interpretation biases. Further, we observed some mental health related moderation of the network structure. Network connectivity decreased with higher positive mental health scores. Network approaches allow us to model complex relationships amongst cognitive biases and develop novel hypotheses for future research. 
 
   
 keywords          : "Combined cognitive bias hypothesis, network analysis, adolescent, positive mental health"
@@ -48,13 +50,14 @@ draft             : no
 documentclass     : "apa6"
 classoption       : "man"
 output            :
-  papaja::apa6_pdf:
+  papaja::apa6_word:
     latex_engine: xelatex
 
 header-includes: #allows you to add in your own Latex packages
 - \usepackage{float} #use the 'float' package
 - \floatplacement{figure}{H} #make every figure with caption = h
 - \raggedbottom
+- \note{\clearpage}
 
 ---
 
@@ -69,6 +72,8 @@ knitr::opts_chunk$set(tidy = TRUE)
 knitr::opts_chunk$set(results = 'hide')
 knitr::opts_chunk$set(cache = TRUE)
 
+options(tinytex.verbose = TRUE)
+
 ```
 
 ```{r load_packages, include = FALSE, cache=FALSE}
@@ -81,6 +86,7 @@ if(!"papaja" %in% rownames(installed.packages())) devtools::install_github("crsh
 if(!"tidyverse" %in% rownames(installed.packages())) install.packages("tidyverse")
 if(!"foreign" %in% rownames(installed.packages())) install.packages("foreign")
 if(!"bootnet" %in% rownames(installed.packages())) install.packages("bootnet")
+if(!"igraph" %in% rownames(installed.packages())) install.packages("igraph")
 if(!"mgm" %in% rownames(installed.packages())) install.packages("mgm")
 if(!"qgraph" %in% rownames(installed.packages())) install.packages("qgraph")
 if(!"NetworkComparisonTest" %in% rownames(installed.packages())) install.packages("NetworkComparisonTest")
@@ -98,6 +104,7 @@ library("papaja")    # for APA formatting awesome-ness in Rmarkdown
 library("tidyverse") # for restructuring data
 library("foreign")   # for using SPSS data
 library("bootnet")   # for network analysis
+library("igraph")    # used for spinglass
 library("mgm")       # for network analysis
 library("qgraph")    # for network analysis - specifically averageLayout
 library("NetworkComparisonTest") # for network model comparisons
@@ -125,6 +132,7 @@ demographics <- read.spss("Data/W1_demographics.sav", to.data.frame = TRUE)
 scores2 <- read.spss("Data/W1_Q2.sav", to.data.frame = TRUE)
 AIBQ <- read.spss("Data/W1_AIBQ.sav", to.data.frame = TRUE)
 Memory <- read.spss("Data/W1_SRET.sav", to.data.frame = TRUE)
+MEM_raw <- read.spss("Data/Start_SRET_Masterfile.sav", to.data.frame = TRUE)
 AB_raw <- read.spss("Data/Dot-Probe SPSS Start.sav", to.data.frame = TRUE)
 AIBQ_raw <- read.spss("Data/Start_AIBQ_rawdata.sav", to.data.frame = TRUE)
 
@@ -133,11 +141,11 @@ AIBQ_raw <- read.spss("Data/Start_AIBQ_rawdata.sav", to.data.frame = TRUE)
 
 # Introduction
 
-Automatic tendencies to selectively process negative, relative to benign or positive material and environmental events, have been associated with anxiety and depression [for reviews, see @Cisler2010a; @Gotlib2010; @Mathews1994; @Mathews2005]. These biases have been explored in attention, interpretation of ambiguity, as well as in memory. Typically, studies examining selective processing biases in relation to emotional vulnerability have tended to examine a single process in isolation, with few studies examining more than one bias in a single study [@everaert_combined_2012;@Hirsch2006]. The combined cognitive bias hypothesis [CCBH: @Hirsch2006], however, proposes that cognitive biases are unlikely to work in isolation to influence emotional vulnerability, but rather, they influence each other and interact to influence other variables, including emotional vulnerability. For example, increased attention towards negative stimuli would be expected to influence how negatively information is interpreted, which would then influence memory for that stimulus. Such a series of causally related negative biases would be expected to propagate emotional vulnerability. Thus, greater influence of one bias on another may further help to perpetrate a negative cycle of maladaptive cognitive processing related to emotional dysfunction. 
+Automatic tendencies to selectively process negative, relative to benign or positive material and environmental events, have been associated with anxiety and depression [for reviews, see @Cisler2010a; @Gotlib2010; @Mathews1994; @Mathews2005]. These biases have been explored in attention, interpretation of ambiguity, as well as in memory. Typically, studies examining selective processing biases in relation to emotional vulnerability have tended to examine these processes in isolation, with few studies examining more than one bias in a single study [@everaert_combined_2012;@Hirsch2006]. The combined cognitive bias hypothesis [CCBH: @Hirsch2006], however, proposes that cognitive biases are unlikely to work in isolation to influence emotional vulnerability, but rather, they influence each other and interact to influence other variables, including emotional vulnerability. For example, increased attention towards negative stimuli would be expected to influence how negatively information is interpreted, which would then influence memory for that stimulus. Such a series of causally related negative biases would be expected to propagate emotional vulnerability. In this way, a greater influence of one bias on another may further help to perpetrate a negative cycle of maladaptive cognitive processing related to emotional dysfunction. 
 
-The CCBH has been tested with tasks designed to capture the direct effect of one bias on another. One study [@Everaert2014] used an eye-tracking modification of a scrambled sentences task [@Wenzlaff1998]. Gaze fixation time on negative words was used to index attention bias, the ratio of negative to total unscrambled sentences was used to index interpretation bias, and a free recall task was used to index memory bias. Two path models were tested, the first omitted relationships between each of the biases, and the second included paths between the biases. The second model better fit the data, supporting the hypothesis that attention bias influenced interpretation bias, which in turn influenced memory bias. A further study in adults investigated the functional relationships among cognitive biases in a subclinical depressed sample and found that while attentional bias was not directly associated with memory bias, there was an indirect association via interpretation bias [@Everaert2013]. Thus, the results supported the CCBH, showing that cognitive biases across different domains do not act in isolation. A further study, conducted in adults, concluded that memory bias is likely to be more effectively modified by targeting emotional processing in another domain, such as interpretation bias [@Hertel2011; @Vrijsen2014]. 
+The CCBH has been tested with tasks designed to capture the direct effect of one bias on another. For instance, one study [@Everaert2014] used an eye-tracking modification of a scrambled sentences task [@Wenzlaff1998]. Gaze fixation time on negative words was used to index attention bias, the ratio of negative to total unscrambled sentences was used to index interpretation bias, and a free recall task was used to index memory bias. Two path models were tested, the first omitted relationships between each of the biases, and the second included paths between the biases. The second model better fit the data, supporting the hypothesis that attention bias influenced interpretation bias, which in turn influenced memory bias. A further study in adults investigated the functional relationships among cognitive biases in a subclinical depressed sample and found that while attentional bias was not directly associated with memory bias, there was an indirect association via interpretation bias [@Everaert2013]. Thus, the results supported the CCBH, showing that cognitive biases across different domains do not act in isolation. A further study, conducted in adults, concluded that memory bias is likely to be more effectively modified by targeting emotional processing in another domain, such as interpretation bias [@Hertel2011; @Vrijsen2014]. 
 
-To our knowledge only two studies have examined the combined cognitive bias hypothesis in adolescent samples [@klein_biases_2017; @orchard_combined_2018]. Klein et al. [-@klein_biases_2017] used three cognitive bias measures; an emotional visual search task, a dot-probe task, and the interpretation recognition task for children. The results indicate that each cognitive bias predicted unique variance in anxiety and depression, separately, supporting the CCBH proposition that cognitive biases in different domains contribute separately to emotional vulnerability. Similarly, a study by Orchard and Reynolds [-@orchard_combined_2018] in adolescents showed that the combination of cognitive biases, interpretation bias and negative self-evaluation bias, predicted depression severity more strongly than individual biases. Both studies suggest that further exploration of adolescent mental health from a CCBH perspective is likely to be highly informative.
+To our knowledge only two studies have examined the combined cognitive bias hypothesis in adolescent samples [@klein_biases_2017; @orchard_combined_2018]. Klein et al. [-@klein_biases_2017] used three cognitive bias measures; an emotional visual search task, a dot-probe task, and the interpretation recognition task for children to nvestigate attention and interpretation biases. The results indicate that each cognitive bias predicted unique variance in anxiety and depression, separately, supporting the CCBH proposition that cognitive biases in different domains contribute separately to emotional vulnerability. Similarly, a study by Orchard and Reynolds [-@orchard_combined_2018] in adolescents showed that the combination of cognitive biases, interpretation bias and negative self-evaluation bias, predicted depression severity more strongly than individual biases alone. Both studies suggest that further exploration of adolescent mental health from a CCBH perspective is likely to be highly informative.
 
 In addition, most relevant to the current study, the CCBH suggests we would expect to observe differences in relationships among biases between clinical and non-clinical groups. The implication is that the interrelationships and interactions among biases themselves may contribute to psychopathology. In one study, the factor structure of cognitive bias measures in attention, inhibition, imagery, and memory were found to differ between a formerly depressed, and a non-clinical sample [@Vrijsen2014]. Coherence between attention and memory bias was found in the non-clinical sample, but not in the formerly depressed sample. This suggests that relationships among cognitive biases may differ between vulnerable and less-vulnerable groups, in support of the CCBH. In the present study, we examine these interrelationships in a normative sample of adolescents using a standardized measure of mental health ranging from languishing to flourishing [@Keyes2002; @Keyes2005]. 
 
@@ -145,7 +153,7 @@ In addition, most relevant to the current study, the CCBH suggests we would expe
 
 The CCBH has a striking overlap with a psychological network approach to emotional disorders. A network perspective on psychopathology views emotional disorders, such as anxiety and depression, as a system of interacting symptoms [@fried_mental_2017; @fried_moving_2017; @fried_what_2017]. As such, rather than individual symptoms acting alone to influence a disorder, the interrelations among them also play a key role. Borsboom and colleagues have been the driving force behind initiating network analyses in clinical psychology [@borsboom_small_2011; @schmittmann_deconstructing_2013], and this has resulted in the application of network analysis approaches to psychopathology [@bernstein_unpacking_2017; @borsboom_network_2013; @Heeren2016; @McNally2011]. A common aim of network approaches is to identify plausible, and potentially causal, connections amongst individual symptoms of a disorder [e.g. @McNally2011]. 
 
-A network theory of mental disorders has been proposed [@Borsboom2017], including several core principles particularly relevant to the CCBH. These principles are comparable to the, albeit less formal, core elements of the CCBH; namely that we would expect different biases to interact with one another to influence emotional vulnerability and that biases may reinforce one another reciprocally to influence emotional vulnerability. The similarities are such that theoretically applying the principles of the network approach may prove fruitful and provide a more formal and systematic approach to investigate the CCBH. We propose that cognitive biases directly and indirectly influence one another (Borsboom’s direct causal connections principle), and that these interactions among different biases are likely to influence emotional vulnerability as well as emotional wellbeing (Borsboom’s complexity principle). 
+A network theory of mental disorders has been proposed [@Borsboom2017], including several core principles particularly relevant to the CCBH. These principles are comparable to the, albeit less formal, core elements of the CCBH; namely that we would expect different biases to interact with one another to influence emotional vulnerability and that biases may reinforce one another reciprocally to influence emotional vulnerability. The similarities are such that theoretically applying the principles of the network approach may prove fruitful and provide a more formal and systematic approach to investigate the CCBH. We propose that cognitive biases directly and indirectly influence one another (Borsboom's direct causal connections principle), and that these interactions among different biases are likely to influence emotional vulnerability as well as emotional wellbeing (Borsboom's complexity principle). 
 
 Network analysis enables the quantification and visualisation of the multivariate dependencies that exist in the dataset. In a psychological network, nodes that represent observed psychological variables (e.g., psychometric tests or indices of cognitive bias) are connected by edges, which represent the observed statistical relationship between them, e.g. regularised partial correlations. The edge colour is a useful indication of the direction of the association; here positive associations are presented in blue and negative associations in red. The edge weight is used to indicate the strength of a relationship; stronger relationships are represented with thicker edges, whereas weaker relationships are denoted with thinner less saturated edges. In this paper, we use a moderated network analysis to investigate mental health related changes in the structure of cognitive bias networks. 
 
@@ -153,17 +161,19 @@ Network analyses have been used previously to investigate laboratory measures of
 
 ## Cognitive bias approaches to positive mental health and resilience
 
-While information-processing approaches have been widely used to investigate the cognitive mechanisms of emotion dysfunction [for reviews, @Gotlib2010; @Mathews2005; @Yiend2010; @lau_annual_2017] relatively little research has examined the role of selective information processing in positive mental health in adults [@Carl2013; @Parsons2016] and even less in adolescents. Positive mental health and mental illness are considered to represent two distinct, albeit inversely correlated, continua [@Keyes2002; @Keyes2005]. Low mental health has been found to have additive adverse effects on an individual’s functioning in life, including academic impairment and suicidal ideation [@Keyes2012a], as well as all-cause mortality [@Keyes2012]. An implication of the dual continua model is that positive mental health may be characterised by distinct patterns of selective processing styles or biases, just as the ‘symptoms’ of mental health and mental illness differ from each other. We therefore used Keyes’ Mental Health Continum [MHC; @Keyes2009] scale which intends to index psychological, social, and cognitive wellbeing as positive mental health.
+While information-processing approaches have been widely used to investigate the cognitive mechanisms of emotion dysfunction [for reviews, @Gotlib2010; @Mathews2005; @Yiend2010; @lau_annual_2017] relatively little research has examined the role of selective information-processing in positive mental health in adults [@Carl2013; @Parsons2016] and even less in adolescents. Positive mental health and mental illness are considered to represent two distinct, albeit inversely correlated, continua [@Keyes2002; @Keyes2005]. Low mental health has been found to have additive adverse effects on an individual's functioning in life, including academic impairment and suicidal ideation [@Keyes2012a], as well as mortality [@Keyes2012]. An implication of the dual continua model is that positive mental health may be characterised by distinct patterns of selective processing styles or biases, just as the ‘symptoms' of mental health and mental illness differ from each other. We therefore used Keyes' Mental Health Continum [MHC; @Keyes2009] scale which intends to index psychological, social, and cognitive wellbeing as positive mental health. 
 
-Some research has examined factors related to positive mental health within a cognitive-experimental framework, as with the CCBH, with the majority of this research being conducted in adults. Therefore, in this study we employed a psychological network analysis approach to investigate the CCBH for positive mental health in adolescents. We use data from the CogBIAS longitudinal study [@booth_cogbias_2017; @booth_cogbias_2019], one of the few studies to collect data for multiple cognitive biases in an adolescent sample [for example, @klein_biases_2017; @orchard_combined_2018] across different time points. We focussed on attention, interpretation, and memory bias, to limit the scope to the processes previously implicated in the CCBH [@Hirsch2006]. Our primary aim was to explore differences in the structure of cognitive bias networks between adolescents higher and lower in mental health. We therefore use a moderated network approach, which allowed us to examine the moderating effect of mental health on the relationships between other biases. To our knowledge, this is the first study to use network analyses to examine the role that connections in selective processing of emotional information plays in positive mental health in an adolescent sample. 
+Some research has examined factors related to positive mental health within a cognitive-experimental framework, as with the CCBH, with the majority of this research being conducted in adults. In the current study we employed a psychological network analysis approach to investigate the CCBH for positive mental health in adolescents. We use data from Wave 1 of the CogBIAS longitudinal study [@booth_cogbias_2017; @booth_cogbias_2019], one of the few studies to collect data for multiple cognitive biases in an adolescent sample [for example, @klein_biases_2017; @orchard_combined_2018] across different time points. Note that these analyses were initially run before the longitudinal data were collected and only wave 1 data were fully available for analyses (wave 2 were yet to be processed and wave 3 were not yet collected). We focussed on interpretation, and memory biases, to limit the scope to the processes previously implicated in the CCBH [@Hirsch2006]. We had intended to include attention bias, but due to poor reliability [see @booth_cogbias_2019] we opted to omit attention bias from the network analyses. 
+
+Our primary aim was to explore differences in the structure of cognitive bias networks between young adolescents who reported higher and lower levels of mental health. We therefore use a moderated network approach, which allowed us to examine the moderating effect of mental health on the relationships between other biases. We note that moderation analyses are often used to search for evidence of causality - due to the cross-sectional data we analyse here we did not aim to establish causal relations among biases from the network structure. To our knowledge, this is the first study to use network analyses to examine the role that connections in selective processing of emotional information plays in positive mental health in an adolescent sample. 
 
 # Methods
 
-The data analysed and presented in this paper are drawn from the CogBIAS longitudinal study [@booth_cogbias_2017; @booth_cogbias_2019], which recruited 504 secondary school adolescents (_M_ age = `r printnum(mean(demographics$Age))`, _SD_ = `r printnum(sd(demographics$Age))`) in the UK. Adolescents completed a series of cognitive bias measures (including attention, interpretation, and memory) across three waves of testing. Data from wave 2 (mean age = 14.5, SD = .6) and wave 3 (mean age = 15.7, SD = .6) were not analysed in this study. This study is the only one known to the authors to incorporate a longitudinal design, with a range of cognitive biases measured at three time-points in an adolescent sample. The CogBIAS study presents an opportunity to examine the CCBH as it applies to adolescents, specifically with respect to the role these cognitive biases play in positive mental health. In this paper, we use data just from wave 1 of the CogBIAS study. ^[We used `r cite_r("r-references.bib")` for all analyses and figures, and to generate this document]  
+The data analysed and presented in this paper are drawn from the CogBIAS longitudinal study [@booth_cogbias_2017; @booth_cogbias_2019], which recruited 504 secondary school adolescents (_M_ age = 12.9, _SD_ = 0.9) in the UK. Adolescents completed a series of cognitive bias measures (including attention, interpretation, and memory) across three waves of testing. Data from wave 2 (mean age = 14.5, SD = 0.6) and wave 3 (mean age = 15.7, SD = 0.6) were not analysed in this study and will be reported elsewhere. This study is the only one known to the authors to incorporate a longitudinal design, with a range of cognitive biases measured at three time-points in an adolescent sample. The CogBIAS study presents an ideal opportunity to examine the CCBH as it applies to young adolescents, specifically with respect to the role these cognitive biases play in positive mental health. To this aim, we use data from wave 1 of the CogBIAS study. ^[We used the following R packages for all analyses and figures, and to generate this document `r cite_r("r-references.bib")`] 
 
 ## Participants
 
-We first excluded all participants without complete data in all of the measures described below (except the dot-probe, see below), from the original sample of 504 students. This resulted in a final sample of 451 students (_M_ age = `r printnum(mean(demographics$Age))`, _SD_ = `r printnum(sd(demographics$Age))`, `r sum(demographics$gender == "F")` female).  In addition, for the first stage of our analysis we selected two groups of participants for the network analyses based on scores on the Mental Health Continuum (MHC). For this, we performed a tertile split to yield low and high Mental Health groups (low-MH and high-MH, respectively). The low-MH group consisted of 145 participants, scoring under 37 on the MHC and the high-MH group consisted of 150 participants scoring above 47 on the MHC. Ethical approval for this study was given by the National Research Ethics Service (NREC; REC reference: 14/SC/0128; IRAS project ID: 141833).
+We first excluded all participants without complete data in all of the measures described below (except the dot-probe, see below), from the original sample of 504 adolescents. This resulted in a final sample of 451 adolescents (_M_ age = `r printnum(mean(demographics$Age, na.rm = TRUE))`, _SD_ = `r printnum(sd(demographics$Age, na.rm = TRUE))`, `r sum(demographics$gender == "F")` female).  In addition, for the first stage of our analysis we selected two groups of participants for the network analyses based on scores on the Mental Health Continuum (MHC). For this, we performed a tertile split to yield low and high Mental Health groups (low-MH and high-MH, respectively). The low-MH group consisted of 145 participants, scoring under 37 on the MHC and the high-MH group consisted of 150 participants scoring above 47 on the MHC. Ethical approval for this study was given by the National Research Ethics Service (NREC; REC reference: 14/SC/0128; IRAS project ID: 141833).
 
 
 
@@ -216,8 +226,8 @@ CCBH2 <- CCBH %>%
 full_cor <- cor(CCBH2)
 full_cov <- cov(CCBH2)
 
-write.csv(full_cor, "Apendices/S1_fullsample_cor.csv")
-write.csv(full_cov, "Apendices/S2_fullsample_cov.csv")
+write.csv(full_cor, "Apendices/S3_fullsample_cor.csv")
+write.csv(full_cov, "Apendices/S4_fullsample_cov.csv")
 
 ```
 
@@ -300,7 +310,7 @@ AB_reliability <- splithalf(data = AB_raw2,
                       compare2 = "Incongruent")
 
 
- AB_reliability[,-2:-5]
+ AB_reliability$final_estimates[,-2:-5]
 
 
 ####  AIBQ
@@ -410,6 +420,81 @@ AIBQ_reliability_table <- data.frame(social = c("social","social","nonsocial","n
                                                 round(nonsoc_pos_o$omega.tot,2),
                                                 round(nonsoc_neg_o$omega.tot,2)))
 
+#### reliability for the SRET
+
+MEM2 <- MEM_raw %>%
+  select(-contains("recallresponse")) %>%
+  select(Master_subject,
+         contains("_endorsed"),
+         contains("_recalled"))
+
+for ( col in 1:ncol(MEM2)){
+    colnames(MEM2)[col] <-  sub("response.", "", colnames(MEM2)[col])
+}
+
+colnames(MEM2)
+
+MEM3 <- MEM2 %>%
+  gather(key = "trial", value = "response", -Master_subject) %>%
+  separate(trial, sep = "_", into = c("word", "EndorcedRecalled")) %>%
+  spread(key = EndorcedRecalled, value = response) %>%
+  mutate(recalled = replace_na(recalled, 0)) %>%
+  mutate(EndorcedAndRecalled = ifelse(endorsed == 1 & recalled == 1, 1, 0)) %>%
+  mutate(valence = ifelse(word == "afraid", "negative",
+                          ifelse(word == "alone", "negative",
+                          ifelse(word == "angry", "negative",
+                          ifelse(word == "anxious", "negative",
+                          ifelse(word == "attractive", "positive",
+                          ifelse(word == "awful", "negative",
+                          ifelse(word == "bad", "negative",
+                          ifelse(word == "bold", "positive",
+                          ifelse(word == "boring", "negative",
+                          ifelse(word == "brave", "positive",
+                          ifelse(word == "cheerful", "positive",
+                          ifelse(word == "clever", "positive",
+                          ifelse(word == "curious", "positive",
+                          ifelse(word == "exciting", "positive",
+                          ifelse(word == "foolish", "negative",
+                          ifelse(word == "free", "positive",
+                          ifelse(word == "friendly", "positive",
+                          ifelse(word == "funny", "positive",
+                          ifelse(word == "happy", "positive",
+                          ifelse(word == "healthy", "positive",
+                          ifelse(word == "helpful", "positive",
+                          ifelse(word == "hurt", "negative",
+                          ifelse(word == "interesting", "positive",
+                          ifelse(word == "leader", "positive",
+                          ifelse(word == "lively", "positive",
+                          ifelse(word == "lonely", "negative",
+                          ifelse(word == "loser", "negative",
+                          ifelse(word == "lucky", "positive",
+                          ifelse(word == "nervous", "negative",
+                          ifelse(word == "nice", "positive",
+                          ifelse(word == "nobody", "negative",
+                          ifelse(word == "popular", "positive",
+                          ifelse(word == "proud", "positive",
+                          ifelse(word == "quiet", "negative",
+                          ifelse(word == "sad", "negative",
+                          ifelse(word == "scared", "negative",
+                          ifelse(word == "sleepy", "negative",
+                          ifelse(word == "smart", "positive",
+                          ifelse(word == "strange", "negative",
+                          ifelse(word == "terrible", "negative",
+                          ifelse(word == "tired", "negative",
+                          ifelse(word == "ugly", "negative",
+                          ifelse(word == "unhappy", "negative",
+                          ifelse(word == "winner", "positive", NA)))))))))))))))))))))))))))))))))))))))))))))
+
+MEM_reliability <- splithalf(data = MEM3, 
+          outcome = "accuracy",
+          score = "average",
+          average = "sum",
+          conditionlist = c("positive", "negative"),
+          var.condition = "valence",
+          var.ACC = "EndorcedAndRecalled",
+          var.participant = "Master_subject")
+
+
 
 #####   reliability for the MHC
 
@@ -453,69 +538,34 @@ As we were interested in differences in network structure of cognitive biases in
 
 ### Mental health
 
-The Mental Health Continuum – Short form [MHC-SF; @Keyes2009] contains 14 items that index emotional, psychological, and social wellbeing, in order to create a composite measure of positive mental health. Participants are asked to rate how often they have experienced each of the items in the past month, on a 6-point Likert scale from "never" to "every day". The MHC-SF has shown high internal consistency and discriminant validity [@Keyes2009; @Lamers2011]; in the current sample reliability was high (MacDonald’s Omega $\omega$ = `r printnum(MHC_omega$omega.tot)`, Cronbach’s alpha $\alpha$ = `r printnum(MHC_alpha$total$raw_alpha)`, 95% CI [`r printnum(MHC_alpha_ci$lower.ci)`, `r printnum(MHC_alpha_ci$upper.ci)`]).
-
-### Attention Bias
-
-An emotional face (angry, happy, and pain) dot-probe task was used to index attention bias [@MacLeod1986] with stimuli from the STOIC faces database [@roy_stoic:_2009]. As with other papers using data from the CogBIAS study, we have opted to omit the attention bias data from our analyses. The internal consistency of each of the attention bias indices (n = 448 following removal of three participants for < 70% accuracy) was below any acceptable threshold, in this sample; angry = `r printnum(AB_reliability[1,6])` , 95% CI [`r printnum(AB_reliability[1,7])`, `r printnum(AB_reliability[1,8])`]; happy = `r printnum(AB_reliability[2,6])` , 95% CI [`r printnum(AB_reliability[2,7])`, `r printnum(AB_reliability[2,8])`]; pain = `r printnum(AB_reliability[3,6])` , 95% CI [`r printnum(AB_reliability[3,7])`, `r printnum(AB_reliability[3,8])`]. These outcome measures are unsuitable for any analyses based on correlational measures and were omitted from any further analyses. For full details about the task, see Booth et al. [-@booth_cogbias_2017; -@booth_cogbias_2019]. 
-
+The Mental Health Continuum - Short form [MHC-SF; @Keyes2009] contains 14 items that index emotional, psychological, and social wellbeing, in order to create a composite measure of positive mental health. Participants are asked to rate how often they have experienced each of the items in the past month, on a 6-point Likert scale from "never" to "every day". The MHC-SF has shown high internal consistency and discriminant validity [@Keyes2009; @Lamers2011]; in the current sample reliability was high (MacDonald's Omega $\omega$ = `r printnum(MHC_omega$omega.tot)`, Cronbach's alpha $\alpha$ = `r printnum(MHC_alpha$total$raw_alpha)`, 95% CI [`r printnum(MHC_alpha_ci$lower.ci)`, `r printnum(MHC_alpha_ci$upper.ci)`]). As our focus was on the network of cognitive biases, and because we examined moderation of the network structure by mental health, we used the total score of the MHC in the networks, rather than the individual items. 
 
 ### Interpretation bias
 
-The Adolescent Interpretation and Belief Questionnaire [AIBQ; @miers_interpretation_2008] contains ten hypothetical scenarios, five of which are socially oriented and five are non-socially oriented, that are intended to reflect events that are likely to be experienced by adolescents. Participants read the scenario and are presented with a question that addresses a point of ambiguity in the scenario. A positive, a neutral, and a negative interpretation of the scenario are presented and participants rate how likely that interpretation would pop into their mind on a 5-point Likert scale. Participants then choose which interpretation of the scenario they believe to be the most correct. Scenarios are presented in a pseudo-random order. Bias scores were computed by calculating the mean likelihood ratings for positive and negative interpretations of social and non-social situations separately, resulting in four bias indices – social positive; non-social positive; social negative; non-social negative. The reliabilities of each of the bias indices were as follows; social positive ($\omega$ = `r printnum(AIBQ_reliability_table[1,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[1,4])`, 95% CI [`r printnum(AIBQ_reliability_table[1,3])`, `r printnum(AIBQ_reliability_table[1,5])`]); Social Negative ($\omega$ = `r printnum(AIBQ_reliability_table[2,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[2,4])`, 95% CI [`r printnum(AIBQ_reliability_table[2,3])`, `r printnum(AIBQ_reliability_table[2,5])`]); Non-Social Positive ($\omega$ = `r printnum(AIBQ_reliability_table[3,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[3,4])`, 95% CI [`r printnum(AIBQ_reliability_table[3,3])`, `r printnum(AIBQ_reliability_table[3,5])`]); Non-Social Negative ($\omega$ = `r printnum(AIBQ_reliability_table[4,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[4,4])`, 95% CI [`r printnum(AIBQ_reliability_table[4,3])`, `r printnum(AIBQ_reliability_table[4,5])`]).
+The Adolescent Interpretation and Belief Questionnaire [AIBQ; @miers_interpretation_2008] contains ten hypothetical scenarios, five of which are socially oriented and five are non-socially oriented, that are intended to reflect events that are likely to be experienced by adolescents. Participants read the scenario and are presented with a question that addresses a point of ambiguity in the scenario. A positive, a neutral, and a negative interpretation of the scenario are presented and participants rate how likely that interpretation would pop into their mind on a 5-point Likert scale. Participants then choose which interpretation of the scenario they believe to be the most correct. Scenarios are presented in a pseudo-random order. Bias scores were computed by calculating the mean likelihood ratings for positive and negative interpretations of social and non-social situations separately, resulting in four bias indices - social positive; non-social positive; social negative; non-social negative. The reliabilities of each of the bias indices were as follows; social positive ($\omega$ = `r printnum(AIBQ_reliability_table[1,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[1,4])`, 95% CI [`r printnum(AIBQ_reliability_table[1,3])`, `r printnum(AIBQ_reliability_table[1,5])`]); Social Negative ($\omega$ = `r printnum(AIBQ_reliability_table[2,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[2,4])`, 95% CI [`r printnum(AIBQ_reliability_table[2,3])`, `r printnum(AIBQ_reliability_table[2,5])`]); Non-Social Positive ($\omega$ = `r printnum(AIBQ_reliability_table[3,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[3,4])`, 95% CI [`r printnum(AIBQ_reliability_table[3,3])`, `r printnum(AIBQ_reliability_table[3,5])`]); Non-Social Negative ($\omega$ = `r printnum(AIBQ_reliability_table[4,6])`; $\alpha$ = `r printnum(AIBQ_reliability_table[4,4])`, 95% CI [`r printnum(AIBQ_reliability_table[4,3])`, `r printnum(AIBQ_reliability_table[4,5])`]).
 
 ### Memory bias 
 
-In the Self-Referential encoding task (SRET), participants were presented with 22 positive and 22 negative words in a random order [the word lists were drawn from @Hammen1984]. Each word was presented for 200ms before a prompt "Describes me?" was presented on screen, after which participants responded ‘yes’ or ‘no’ using the ‘Y’ and ‘N’ keys on the computer keyboard. After all words had been presented, a short distraction task was administered consisting of three simple mathematics questions. Finally, in the incidental recall phase, participants were given three minutes to recall and type in as many words as they could remember. Positive and negative memory bias indices were calculated as the number of positive and negative words, respectively, that were endorsed (participants responded that the word described them) and subsequently recalled [@asarnow_children_2014]. We are not aware of a suitable procedure for estimating the reliability of the memory bias indices due to the process of calculating the scores. Yet, the test-retest reliability (ICC3k) of the memory bias indices over three waves of testing was .68 and .72 for negative and positive memory bias, respectively, suggesting that the measure is somewhat reliable. 
+In the Self-Referential encoding task (SRET), participants were presented with 22 positive and 22 negative words in a random order [the word lists were drawn from @Hammen1984]. Each word was presented for 200ms before a prompt "Describes me?" was presented on screen, after which participants responded ‘yes' or ‘no' using the ‘Y' and ‘N' keys on the computer keyboard. After all words had been presented, a short distraction task was administered consisting of three simple mathematics questions. Finally, in the incidental recall phase, participants were given three minutes to recall and type in as many words as they could remember. Positive and negative memory bias indices were calculated as the number of positive and negative words, respectively, that were endorsed (participants responded that the word described them) and subsequently recalled [@asarnow_children_2014]. Internal consistency reliability estimates were obtained using the R package _splithalf_ [@parsons_splithalf:_2019]: Negative = `r printnum(MEM_reliability$final_estimates[1,"spearmanbrown"])` , 95% CI [`r printnum(MEM_reliability$final_estimates[1,"SB_low"])`, `r printnum(MEM_reliability$final_estimates[1,"SB_high"])`]; and Positive = `r printnum(MEM_reliability$final_estimates[2,"spearmanbrown"])` , 95% CI [`r printnum(MEM_reliability$final_estimates[2,"SB_low"])`, `r printnum(MEM_reliability$final_estimates[2,"SB_high"])`]
+
+
+
 
 ## Procedure
 
-Participants were tested in groups ranging between 13 and 50 students in computer labs either in their own school, or at the University of Oxford. Testing consisted of two, one-hour sessions which were either back-to-back or on different days, depending on school and testing space availability. In each session, participants completed three tasks, in the same order, followed by a battery of questionnaires [see @booth_cogbias_2017, for further information on measures not analysed in this paper]. Participants were asked to complete both sessions in exam conditions, i.e. not talking or looking their peers’ computer screens. At least one researcher was present throughout the testing sessions to answer any questions and ensure adequate testing conditions were maintained. 
+Participants were tested in groups ranging between 13 and 50 students in computer labs either in their own school, or at the University of Oxford. Testing consisted of two, one-hour sessions which were either back-to-back or on different days, depending on school and testing space availability. In each session, participants completed three tasks, in the same order, followed by a battery of questionnaires [see @booth_cogbias_2017, for further information on measures not analysed in this paper]. Participants were asked to complete both sessions in exam conditions, i.e. not talking or looking their peers' computer screens. At least two researchers were present throughout the testing sessions to answer any questions and ensure adequate testing conditions were maintained. 
 
 ## Data analysis
 
-In our preliminary analysis, we compared the network structure of interpretation and memory biases for a high-MH and a low-MH group, following a tertile split of the data by mental health. We computed a ‘graphical LASSO’ [gLASSO; @R-bootnet; also @friedman_sparse_2008] estimation procedure with EBIC model selection [@foygel_extended_2010]. The glasso algorithm is implemented in the _glasso_ package [@friedman_glasso:_2014], and is called by the _bootnet_ package [@R-bootnet], which we used for this paper. The glasso algorithm estimates a partial correlation network by directly penalising elements of the variance-covariance matrix and removing edges close to zero. We set the tuning parameter gamma to 0.5 to generate a sparser network, due to the removal of potentially spurious associations. We then used the NCT function from the _NetworkComparisonTest_ package [@R-NetworkComparisonTest] to compare our high mental health and low mental health networks. The function tests for differences in the overall connectivity (as the sum of all edge weights in the network, or global strength) between networks. 
+First, we report a preliminary analysis in which we compared the network structure of interpretation and memory biases for a high-MH and a low-MH group, following a tertile split of the data by mental health. We computed a ‘graphical LASSO' [gLASSO; @R-bootnet; also @friedman_sparse_2008] estimation procedure with EBIC model selection [@foygel_extended_2010]. The glasso algorithm is implemented in the _glasso_ package [@friedman_glasso:_2014], and is called by the _bootnet_ package [@R-bootnet], which we used for this paper. The glasso algorithm estimates a partial correlation network by directly penalising elements of the variance-covariance matrix and removing edges close to zero. We set the tuning parameter gamma to 0.5 to generate a sparser network, due to the removal of potentially spurious associations. We then used the NCT function from the _NetworkComparisonTest_ package [@R-NetworkComparisonTest] to compare our high mental health and low mental health networks. The function tests for differences in the overall connectivity (as the sum of all edge weights in the network, or global strength) between networks. 
 
-For the core analysis, we conducted a moderated network analysis [@haslbeck_moderated_2018] using the _mgm_ package, treating Mental Health as a moderating variable in the network. This allows us use the entire sample and to treat mental health as a continuous variable, rather than dichotomising our sample. Moreover, moderated networks examine moderation of individual edges, providing a nuanced perspective on any moderating effects of mental health. This improves on the network comparison test, which only provides information about the difference in global connectivity between the networks. For instance, Haslbeck et al. [-@haslbeck_moderated_2018] demonstrated that a moderated network approach outperforms split-sample methods like network comparison test and fused graphical lasso models. We also obtained predictability indices for each node in the network. We then resampled the estimated network 500 times to obtain confidence intervals around the estimated network structure and moderation effects, thus providing vital information on the stability of the networks. The resampling procedure also allowed us to extract the proportion of non-zero edges and moderating effects. Finally, we computed and visualised three networks conditioned on mental health to illustrate changes in network structure at different levels of mental health.
+For the core analysis, we conducted a moderated network analysis [@haslbeck_moderated_2018] using the _mgm_ package, treating Mental Health as a moderating variable in the network. This allows us to use the entire sample and to treat mental health as a continuous variable, rather than dichotomising our sample. Moreover, moderated networks examine moderation of individual edges, providing a nuanced perspective on any moderating effects of mental health. This improves on the network comparison test, which only provides information about the difference in global connectivity between the networks. For instance, Haslbeck et al. [-@haslbeck_moderated_2018] demonstrated that a moderated network approach outperforms split-sample methods like network comparison test and fused graphical lasso models. We also obtained predictability indices for each node in the network. We then resampled the estimated network 500 times to obtain confidence intervals around the estimated network structure and moderation effects, thus providing vital information on the stability of the networks. The resampling procedure also allowed us to extract the proportion of non-zero edges and moderating effects. Finally, we computed and visualised three networks conditioned on mental health to illustrate changes in network structure at different levels of mental health.
+
+We have included both analyses in this paper for two reasons. First, we were made aware of moderated network analyses during the revisions of this paper. Therefore, we include this original analysis to present the development of this research. Secondly, the analyses converge on similar conclusions and we felt it would be sensible to present both.  
 
 # Results
 
-Table 1 presents the descriptive statistics and correlation matrix for all variables included in the network analysis. Correlation and covariance matrices for the full sample (S1-2), and the low and high MH subsample (S3-6) are in the supplemental materials. 
-
-```{r table1, results = 'asis'}
-demographics2 <- demographics %>%
-  filter(MASTERNUMBER %in% unique(CCBH$subject))
-
-m_sd <- psych::describe(CCBH2) %>%
-  select(mean, sd) %>%
-  round(2)
-
-rownames(m_sd) <- c("MH (1)",
-                    "IB_S_Pos (2)",
-                    "IB_N_Pos (3)",
-                    "IB_S_Neg (4)",
-                    "IB_N_Neg (5)",
-                    "MB_Pos (6)",
-                    "MB_Neg (7)")
-
-fash1 <- fashion(cor(CCBH2), decimals = 2, leading_zeros = FALSE, na_print = "") %>%
-  rename('(1)' = MH,
-         '(2)' = IB_S_Pos,
-         '(3)' = IB_N_Pos,
-         '(4)' = IB_S_Neg,
-         '(5)' = IB_N_Neg,
-         '(6)' = MB_Pos,
-         '(7)' = MB_Neg) %>%
-  select(-'(7)')
-
-fash1[upper.tri(fash1, diag = TRUE)] <- ""
-
-papaja::apa_table(cbind(m_sd, fash1),
-                  align = c('l', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r'),
-                  caption = "Descriptive statistics and correlation matrix for the full sample (n = 451)",
-                  note = "MH = Positive mental health; IB_S_Pos = Social Positive Interpretation Bias; IB_S_Neg = Social Negative Interpretation Bias; IB_N_Pos = Non-Social Negative Interpretation Bias; IB_N_Neg = Non-Social; MB_Pos = positive memory bias; MB_Neg = negative memory bias.")
-
-```
+Supplimentary table 1 presents the descriptive statistics and correlation matrix for all variables included in the network analysis. Supplimentary table 2 presents the descriptive statistics for the high and low groups. Correlation and covariance matrices for the full sample (S3-4), and for the low and high MH subsamples (S5-8) are in the supplemental materials. 
 
 ```{r create high and low groups}
 # checking sample size for the tertile split
@@ -552,13 +602,59 @@ low_cov <- cov(low3)
 high_cor <- cor(high3)
 high_cov <- cov(high3)
 
-write.csv(low_cor, "Apendices/S3_lowMH_cor_matrix.csv")
-write.csv(low_cov, "Apendices/S4_lowMH_cov_matrix.csv")
-write.csv(high_cor, "Apendices/S5_highMH_cor_matrix.csv")
-write.csv(high_cov, "Apendices/S6_highMH_cov_matrix.csv")
+write.csv(low_cor, "Apendices/S5_lowMH_cor_matrix.csv")
+write.csv(low_cov, "Apendices/S6_lowMH_cov_matrix.csv")
+write.csv(high_cor, "Apendices/S7_highMH_cor_matrix.csv")
+write.csv(high_cov, "Apendices/S8_highMH_cov_matrix.csv")
 
 
 ```
+
+
+```{r table1, results = 'asis', include = FALSE}
+demographics2 <- demographics %>%
+  filter(MASTERNUMBER %in% unique(CCBH$subject))
+
+m_sd <- psych::describe(CCBH2) %>%
+  select(mean, sd) %>%
+  round(2)
+
+rownames(m_sd) <- c("MH (1)",
+                    "IB_S_Pos (2)",
+                    "IB_N_Pos (3)",
+                    "IB_S_Neg (4)",
+                    "IB_N_Neg (5)",
+                    "MB_Pos (6)",
+                    "MB_Neg (7)")
+
+fash1 <- fashion(cor(CCBH2), decimals = 2, leading_zeros = FALSE, na_print = "") %>%
+  rename('(1)' = MH,
+         '(2)' = IB_S_Pos,
+         '(3)' = IB_N_Pos,
+         '(4)' = IB_S_Neg,
+         '(5)' = IB_N_Neg,
+         '(6)' = MB_Pos,
+         '(7)' = MB_Neg) %>%
+  select(-'(7)')
+
+fash1[upper.tri(fash1, diag = TRUE)] <- ""
+
+
+table1 <- as.data.frame(cbind(m_sd, fash1))
+
+
+papaja::apa_table(table1,
+                  align = c('l', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r', 'r'),
+                  caption = "Descriptive statistics and correlation matrix for the full sample (n = 451) and descriptive statistics for the low-MH and high-MH group",
+                  note = "MH = Positive mental health; IB_S_Pos = Social Positive Interpretation Bias; IB_S_Neg = Social Negative Interpretation Bias; IB_N_Pos = Non-Social Negative Interpretation Bias; IB_N_Neg = Non-Social; MB_Pos = positive memory bias; MB_Neg = negative memory bias.")
+
+write.csv(table1, "Apendices/S1_table_1.csv")
+
+
+
+
+```
+
 
 ```{r glasso networks, results = 'hide', fig.show="hide"}
 # estimate the networks
@@ -659,6 +755,91 @@ lh$nwinv.pval
 
 First we estimated a graphical LASSO network (tuning parameter gamma was set to .5 to generate a sparser network) for the high and low mental health groups separately. Figure 1 presents a visualisation of both networks. In the low mental health network, each node is connected to two or more other nodes; negative and positive biases are negatively associated; and, the strongest edges connect memory biases with social interpretation biases. In contrast, the high mental health network is substantially less interconnected compared to the low mental health network with only three retained edges compared to eleven. In the high mental health network, no negative relationships were retained between the positive and negative cognitive biases. Additionally, the edges retained in both networks appear weaker in the high mental health group. To formally compare the global strength of each network (the sum of edge strengths in the network) we used the NCT function from the _NetworkComparisonTest_ package [@R-NetworkComparisonTest]. We ran 1000 iterations resampling from the networks. The low-MH network (global strength = `r printnum(sum(abs(glasso_low$graph))/2)`) was more strongly connected overall than the high-MH network (global strength = `r printnum(sum(abs(glasso_high$graph))/2)`), and this difference was statistically significant, _p_ = `r printp(lh$glstrinv.pval)`. 
 
+```{r check variance differences}
+low4 <- low3
+low4$group <- "low"
+
+high4 <- high3
+high4$group <- "high"
+
+mix <- rbind(low4, high4)
+mix$group <- as.factor(mix$group)
+
+bftest_IBSPos <- onewaytests::bf.test(data = mix,
+                     IB_S_Pos ~ group)
+bftest_IBNPos <- onewaytests::bf.test(data = mix,
+                     IB_N_Pos ~ group)
+bftest_IBSNeg <- onewaytests::bf.test(data = mix,
+                     IB_S_Neg ~ group)
+bftest_IBNNeg <- onewaytests::bf.test(data = mix,
+                     IB_N_Neg ~ group)
+
+bftest_MBPos <- onewaytests::bf.test(data = mix,
+                     MB_Pos ~ group)
+bftest_MBNeg <- onewaytests::bf.test(data = mix,
+                     MB_Neg ~ group)
+
+if(all(bftest_IBSPos$p.value < .05,
+      bftest_IBNPos$p.value < .05,
+      bftest_IBSNeg$p.value < .05,
+      bftest_IBNNeg$p.value < .05,
+      bftest_MBPos$p.value < .05,
+      bftest_MBNeg$p.value < .05)) {
+  bftest_min <- "< .05"
+      }
+
+
+
+var(low4$IB_S_Pos)
+var(high4$IB_S_Pos)
+
+var(low4$IB_N_Pos)
+var(high4$IB_N_Pos)
+
+var(low4$IB_S_Neg)
+var(high4$IB_S_Neg)
+
+var(low4$IB_S_Neg)
+var(high4$IB_S_Neg)
+
+var(low4$MB_Pos)
+var(high4$MB_Pos)
+
+var(low4$MB_Neg)
+var(high4$MB_Neg)
+
+low_m_sd <- psych::describe(low2[,c(2,4,5,6,7,9,10)]) %>%
+  select(mean, sd) %>%
+  round(2)
+
+low_m_sd$var <- round(sapply(low2[,c(2,4,5,6,7,9,10)], var), 2)
+
+low_m_sd <- low_m_sd %>%
+  rename(`low M` = mean,
+         `low SD` = sd,
+         `low Var` = var)
+
+high_m_sd <- psych::describe(high2[,c(2,4,5,6,7,9,10)]) %>%
+  select(mean, sd) %>%
+  round(2)
+
+high_m_sd$var <- round(sapply(high2[,c(2,4,5,6,7,9,10)], var), 2)
+
+high_m_sd <- high_m_sd %>%
+  rename(`high M` = mean,
+         `high SD` = sd,
+         `high Var` = var)
+
+table2 <- cbind(low_m_sd, high_m_sd)
+
+write.csv(table2, "Apendices/S2_table_2.csv")
+
+
+```
+
+It is possible that low connectivity in the high-MH group could be caused by low variance. We ran Brown-Forsythe tests for equality of variances for each bias to compare the high and low group. For all variables, the high-MH group had significantly less variance (all _p_ values `r bftest_min`). While significant, the differences are small. For example, positive interpretation bias for social scenarios had variances of `r var(low4$IB_S_Pos)` and `r var(high4$IB_S_Pos)` for the low-MH and high-MH groups, respectively. It is unlikely that a relative lack of variance entirely explains the low connectivity in the high-MH group. 
+
+
 ```{r fig.cap="Graphical LASSO Networks. The left and right panels present the graphical LASSO network from the low mental health group and the high mental health group, respectively. Each node represents a cognitive bias measure and each edge represents the (partial) correlation between the nodes it connects, after controlling for all other variables in the network. Thicker edges represent stronger associations. Blue edges indicate positive relationships, whereas red edges indicate negative relationships. \n Note. IB_S_Pos = Social Positive Interpretation Bias; IB_S_Neg = Social Negative Interpretation Bias; IB_N_Pos = Non-Social Negative Interpretation Bias; IB_N_Neg = Non-Social; MB_Pos = positive memory bias; MB_Neg = negative memory bias."}
 
 layout(t(1:2))
@@ -688,7 +869,7 @@ plot(glasso_high,
 
 ### Moderated network analysis
 
-As described in the data analysis section, there are some limitations to the previous analysis. Splitting the sample and comparing the global strength provides some, but limited, information about the moderating effect of mental health on the interrelationships among cognitive biases. To address the question of moderation fully we analysed the full data set using a moderated network analysis approach [@haslbeck_moderated_2018]. We used the _mgm_ package [@haslbeck_moderated_2018] to estimate the moderated network with positive mental health as the moderating variable. We used cross-validation to select the regularization parameter. Weak edges are shrunk to zero leading to a matrix of regularised coefficients representing conditional dependence relations. For the nodewise regressions k edge weights are obtained for each k-order interaction (e.g. 2 for pairwise interactions and 3 for the moderated effects). We used the OR-rule to combine these weights, which takes the mean of all k parameter estimates, as the default option and because the AND-rule may be too conservative for the 3-way interactions of interest [@haslbeck_moderated_2018]. We then extracted predictability indices for each variable following Haslbeck & Waldorp [-@haslbeck_how_2018]. Predictability refers to the proportion of variance explained by all other nodes in the network. 
+As described in the data analysis section, there are some limitations to the previous analysis. Splitting the sample and comparing the global strength provides some, but limited, information about the moderating effect of mental health on the interrelationships among cognitive biases. Additionally, to address the question of moderation fully we analysed the full data set using a moderated network analysis approach [@haslbeck_moderated_2018]. We used the _mgm_ package [@haslbeck_moderated_2018] to estimate the moderated network with positive mental health as the moderating variable. We used cross-validation to select the regularization parameter. Weak edges are shrunk to zero leading to a matrix of regularised coefficients representing conditional dependence relations. For the nodewise regressions k edge weights are obtained for each k-order interaction (e.g. 2 for pairwise interactions and 3 for the moderated effects). We used the OR-rule to combine these weights, which takes the mean of all k parameter estimates, as the default option and because the AND-rule may be too conservative for the 3-way interactions of interest [@haslbeck_moderated_2018]. We then extracted predictability indices for each variable following Haslbeck & Waldorp [-@haslbeck_how_2018]. Predictability refers to the proportion of variance explained by all other nodes in the network. 
 
 ```{r results = 'hide'}
 
@@ -727,12 +908,12 @@ prediction_max <- pred_list[which.max(pred_list$pred),"pred"]
 prediction_MH <- pred_list[pred_list$var == "MH","pred"]
 ```
 
-The resulting network of pairwise interactions is visualised in Figure 2 (for ease of interpretation we present the moderation effects separately in Figure 3). Mental health was connected most strongly to memory biases – i.e., a negative association with negative memory and positive association with positive memory. For interpretation biases, only edges connecting mental health to positive interpretation biases (social and non-social) were retained. Edges connecting mental health to negative interpretation biases were not retained.  Non-social interpretation biases were not directly connected to memory biases (both positive and negative), but were connected via social interpretation biases. The explained variance (predictability metric) of mental health was `r printnum(prediction_MH*100)`%; the predictability of the cognitive biases ranged from `r printnum(prediction_min*100)`% (positive memory bias) to `r printnum(prediction_max*100)`% (negative social interpretation bias). 
+The resulting network of pairwise interactions is visualised in Figure 2 (for ease of interpretation we present the moderation effects separately in Figure 3). Mental health was connected most strongly to memory biases - i.e., a negative association with negative memory and positive association with positive memory. For interpretation biases, only edges connecting mental health to positive interpretation biases (social and non-social) were retained. Edges connecting mental health to negative interpretation biases were not retained.  Non-social interpretation biases were not directly connected to memory biases (both positive and negative), but were connected via social interpretation biases. The explained variance (predictability metric) of mental health was `r printnum(prediction_MH*100)`%; the predictability of the cognitive biases ranged from `r printnum(prediction_min*100)`% (positive memory bias) to `r printnum(prediction_max*100)`% (negative social interpretation bias). 
 
 
 ```{r, fig.cap="Estimated moderated network of positive mental health, and interpretation and memory cognitive biases. Blue edges represent positive associations, red edges represent negative associations; the width of the edge indicates the strength of this relationship. The shaded area of the pie surrounding each node represents the predictability of that variable, i.e., the variance explained by all other variables in the network. Note that this figure does not visualise the degree of moderation in the networks. \n Note: MH = Positive mental health; IB_S_Pos = Social Positive Interpretation Bias; IB_S_Neg = Social Negative Interpretation Bias; IB_N_Pos = Non-Social Negative Interpretation Bias; IB_N_Neg = Non-Social; MB_Pos = positive memory bias; MB_Neg = negative memory bias"}
 
-qgraph(fit_obj3$pairwise$wadj * fit_obj3$pairwise$signs,
+mgm_figure <- qgraph(fit_obj3$pairwise$wadj * fit_obj3$pairwise$signs,
        pie = error_list3,
        layout="spring",
        labels = colnames(CCBH2),
@@ -747,6 +928,45 @@ qgraph(fit_obj3$pairwise$wadj * fit_obj3$pairwise$signs,
        title = "")
 ```
 
+```{r spinglass}
+mgm_igraph <- as.igraph(mgm_figure, attributes = TRUE)
+
+spinglass <- data.frame(MH = NULL,
+                   IB_S_Pos = NULL,
+                   IB_N_Pos = NULL,
+                   IB_S_Neg = NULL,
+                   IB_N_Neg = NULL,
+                   MB_Pos = NULL,
+                   MB_Neg = NULL)
+for(i in 1:1000) {
+  sgc <- spinglass.community(mgm_igraph)
+  spinglass[i,1:7] <- sgc$membership[1:7]
+}
+
+spinglass <- rename(spinglass,
+               MH = V1,
+               IB_S_Pos = V2,
+               IB_N_Pos = V3,
+               IB_S_Neg = V4,
+               IB_N_Neg = V5,
+               MB_Pos = V6,
+               MB_Neg = V7)
+spinglass$test <- ifelse(spinglass$IB_S_Pos == 1 & spinglass$IB_N_Pos == 1 & 
+                         spinglass$IB_S_Neg == 2 & spinglass$IB_N_Neg == 2 & 
+                         spinglass$MB_Pos == 1 & spinglass$MB_Neg == 2, 1,
+                  ifelse(spinglass$IB_S_Pos == 2 & spinglass$IB_N_Pos == 2 &
+                         spinglass$IB_S_Neg == 1 & spinglass$IB_N_Neg == 1 & 
+                         spinglass$MB_Pos == 2 & spinglass$MB_Neg == 1, 1, 0))
+
+n_pos_neg <- sum(spinglass$test)/nrow(spinglass) # proportion of runs splitting into positive and negative
+
+spinglass2 <- subset(spinglass, test == 1)
+spinglass2$MHPos <- ifelse(spinglass2$MH == spinglass2$IB_S_Pos, 1, 0)
+n_MH_pos <- sum(spinglass2$MHPos)/nrow(spinglass2) # number of runs that mental health falls into the positive group.
+
+```
+
+We ran 1000 iterations of a spinglass procedure [@reichardt_statistical_2006] using the R package _igraph_ [@R-igraph] to examine communalities within the network. In `r n_pos_neg * 100`% iterations two groups were formed, separating the positive and negative biases. In these,  mental health was grouped with the positive variables in `r n_MH_pos * 100`% of cases. 
 
 ```{r saveplot, fig.show=FALSE, results='hide', include=FALSE}
 Cairo::Cairo(file="Figures/mgm_MHC_linear_fullsample_nosquarenodes.png", 
@@ -774,7 +994,7 @@ dev.off()
 ```
 
 ```{r resampling_mgm, results = 'hide'}
-n_resamples <- 50
+n_resamples <- 500
 
 res_obj <- resample(object = fit_obj3,
               data = CCBH2,
@@ -1008,11 +1228,24 @@ out_table <- data.frame(edge = label_vec,
 levelorder <- out_table$edge
 
 write.csv(out_table, "moderated_network.csv")
+
+over80 <- "edges"
+
+for(i in 1:nrow(out_table)) {
+  if(out_table[i,"int_prop"] > .8) {
+    over80 <- paste(over80, "; and " , out_table[i,"edge"], sep = "")
+  }
+}
+
+out_table %>%
+  select(edge, int_prop) %>%
+  subset(int_prop > .8)
+
 ```
 
 To obtain information about the stability of the moderated network we resampled the moderated network 500 times. This allowed us to obtain confidence intervals surrounding each individual edge weight. It further allowed us to examine the strength of moderation for each edge and compute confidence intervals around the moderation estimate and the proportion of moderated edges. Figure 3 presents the mean weight and Confidence Intervals for individual edges. Additionally, Figure 3 presents the degree of moderation due to mental health on each edge as a result. The moderating effect of mental health on most edges follows a similar pattern to the original analysis. Most edges were moderated towards zero with increased positive mental health. Thus, overall we would expect a sparser network at higher mental health, compared to low mental health. The main exception to this trend was the edge connecting social positive and non-social positive interpretation biases. This was the only (likely non-zero) edge to be moderated to be stronger with increases in mental health. 
 
-```{r fig.cap = "Edge strength and degree of moderation by mental health. The left panel presents the estimated edge weights (these correspond to the network visualization in figure 2) from 5000 resamples of the mgm network estimation procedure. The shaded area represents the 95% CI around the estimate. Numbers running down the centre of the figure represent the proportion of non-zero estimates for each edge. The right panel presents the estimated moderating effect of mental health on each edge; the ticks represent the 95% CI around the estimate. The circled numbers represent the number of non-zero moderation effects arising across the resamples. \n Note: MH = Positive mental health. From the Adolescent Interpretation and Belief Questionnaire (AIBQ): IB_S_Pos = Positive interpretation bias in social scenarios; IB_S_Neg = Negative interpretation bias in social scenarios; IB_N_Pos = Negative interpretation bias in non-social scenarios; IB_N_Neg = Negative interpretation bias in non-social scenarios. From the self-referential encoding task (endorsed and recalled items): MB_Pos = positive memory bias; MB_Neg = negative memory bias."}
+```{r fig.cap = "Edge strength and degree of moderation by mental health. The left panel presents the estimated edge weights (these correspond to the network visualization in figure 2) from 5000 resamples of the mgm network estimation procedure. The shaded area represents the 95% CI around the estimate. Numbers running down the centre of the figure represent the proportion of non-zero estimates for each edge. The right panel presents the estimated moderating effect of mental health on each edge; the ticks represent the 95% CI around the estimate. The circled numbers represent the number of non-zero moderation effects arising across the resamples. Note: MH = Positive mental health. From the Adolescent Interpretation and Belief Questionnaire (AIBQ): IB_S_Pos = Positive interpretation bias in social scenarios; IB_S_Neg = Negative interpretation bias in social scenarios; IB_N_Pos = Negative interpretation bias in non-social scenarios; IB_N_Neg = Negative interpretation bias in non-social scenarios. From the self-referential encoding task (endorsed and recalled items): MB_Pos = positive memory bias; MB_Neg = negative memory bias."}
 
 cols <- c("#BF0000", "#E7A0A0FF", "#FFFFFF", "#ACACF1FF", "#0000D5")
 
@@ -1118,7 +1351,7 @@ dev.off()
 
 ## Conditioning the network on Mental Health
 
-To highlight the influence of mental health as the moderator of the networks, Figure 4 presents three networks comparing values of mental health. We used the condition() function from the _mgm_ package [@R-mgm] to condition the estimated moderated network (Figure 2) on the mental health moderator. We conditioned the network to -1 standard deviation from the mean, the mean, and +1 standard deviation from the mean on positive mental health (the left, centre, and right panels in figure 4, respectively).
+To highlight the influence of mental health as the moderator of the networks, Figure 4 presents three networks comparing values of mental health. We used the condition() function from the _mgm_ package [@R-mgm] to condition the estimated moderated network (Figure 2) on the mental health moderator. We conditioned the network to -1 standard deviation from the mean, the mean, and +1 standard deviation from the mean on positive mental health (the left, centre, and right panels in Figure 4, respectively).
 
 ```{r fig.cap="Networks of cognitive biases conditioned on mental health. Mental health is specified at -1SD (left) and +1SD (right) from the mean, and at the mean MH (centre). Conditioning sets mental health to the specified value, and therefore the edges connecting mental health are set to zero (as there is no variance in mental health). \n Note: MH = Positive mental health. From the Adolescent Interpretation and Belief Questionnaire (AIBQ): IB_S_Pos = Positive interpretation bias in social scenarios; IB_S_Neg = Negative interpretation bias in social scenarios; IB_N_Pos = Negative interpretation bias in non-social scenarios; IB_N_Neg = Negative interpretation bias in non-social scenarios. From the self-referential encoding task (endorsed and recalled items): MB_Pos = positive memory bias; MB_Neg = negative memory bias."}
 
@@ -1232,7 +1465,7 @@ dev.off()
 
 # Discussion
 
-The present study investigated the Combined Cognitive Bias Hypothesis [CCBH; @Hirsch2006; @everaert_combined_2012] in adolescents using a network approach. We analysed baseline data (at age 12-14 years) from the CogBIAS longitudinal study [@booth_cogbias_2017; @booth_cogbias_2019], including interpretation bias and memory bias measures. We excluded attention bias indices from the analyses due to low reliability (we discuss this in the limitations below). First, we split the sample into high and low mental health subsets. We estimated networks of biases for each group and compared the global strength of each network. The low mental health network showed greater connectivity than the high mental health group. We expanded on this analysis with a moderated network approach treating mental health as a moderating variable in the network of cognitive biases. The results suggest some, albeit small, moderation effects. The edge connecting negative social interpretation bias and negative memory bias was the most moderated edge, both in strength of moderation and in the proportion of resamples that included a non-zero moderation effect estimate. Mental health moderated each edge in `r min(out_table[out_table$int_prop != 0,"int_prop"])*100`% or more of the resamples (see Figure 3). Qualitatively, there was a trend for higher mental health to moderate edges towards zero, and therefore, a more weakly connected network.
+The present study investigated the Combined Cognitive Bias Hypothesis [CCBH; @Hirsch2006; @everaert_combined_2012] in adolescents using a network approach. We analysed baseline data (at age 12-14 years) from the CogBIAS longitudinal study [@booth_cogbias_2017; @booth_cogbias_2019], including interpretation bias and memory bias measures. We excluded attention bias indices from the analyses due to low reliability (we discuss this in the limitations below). First, we split the sample into high and low mental health subsets. We estimated networks of biases for each group and compared the global strength of each network. The low mental health network showed greater connectivity than the high mental health group. We expanded on this analysis with a moderated network approach treating mental health as a moderating variable in the network of cognitive biases. The results suggest some, albeit small, moderation effects. The edge connecting negative social interpretation bias and negative memory bias was the most moderated edge, both in strength of moderation and in the proportion of resamples that included a non-zero moderation effect estimate. Mental health moderated each edge in `r min(out_table[out_table$int_prop != 0,"int_prop"])*100`% or more of the resamples (see Figure 3). The edge connecting negative social interpretation bias and negative memory bias, and the edge connecting positive social interpretation bias and positive memory bias, showed the strongest evidence of moderation with more than 80% of resamples having a moderation effect (Figure 3). Qualitatively, there was a trend for higher mental health to moderate edges towards zero, and therefore, a more weakly connected network. In other words, higher mental health was associated with reduced associations between cogntive biases. 
 
 ## Implications for the Combined Cognitive Bias Hypothesis
 
@@ -1242,21 +1475,19 @@ Our analyses address the CCBH association question in the broadest sense by show
 
 To address CCBH causality questions, we need experimental tasks that integrate multiple cognitive bias processes [e.g. @Everaert2014], or extensive longitudinal research designs. We cannot make inferences from our networks on the causal relations between biases, nor causal relations between the network structure of biases and mental health. Yet, network analyses are extremely useful for hypothesis generation. One way we can propose causal hypotheses is to examine edges that were not retained in the network. For instance, mental health was not directly connected to negative interpretation biases, when controlling for all other variables in the network. This suggests that negative interpretation biases influence mental health via other biases in the network, e.g. negative memory bias. This follows from the CCBH and suggests a causal chain from negative interpretation bias for social scenarios, via negative memory bias, to influence mental health. Others have argued that it is difficult to modify memory bias directly, and training interpretation bias, with the intent to modify memory biases, may be more effective [@Vrijsen2013]. Related to this, our network does not include edges connecting non-social interpretation biases and memory biases. A reasonable hypothesis would be that targeting social interpretation bias in adolescents would be more effective at modifying memory bias, than training non-social interpretation bias. We could further hypothesise that modifying interpretation bias would influence mental health via shifting memory bias. Future work might seek to test these hypotheses directly with an experimental paradigm, or with extensive longitudinal data. 
 
-Network approaches also enable us to address CCBH predictive magnitude questions, albeit via a different lens to traditional approaches. These questions are concerned with whether cognitive biases have additive and/or interactive effects on mental health. For example, previous research has found that combined cognitive biases were more predictive of adolescent depression severity than individual biases alone [@orchard_combined_2018]. Network theory, applied to mental disorders, proposes that highly connected networks are more vulnerable to psychopathology [@Borsboom2017; also see @kalisch_deconstructing_2019]. Strongly interconnected, causally related symptoms may reinforce one another to propagate a disorder. The network approach conceives of mental health problems as networks of connected symptoms that causally influence each other in a highly dynamic way, as opposed to the traditional view that mental health problems can be classified as distinct clusters of symptoms that are likely to have a single underlying cause. This is a paradigm shift that we have applied to the CCBH, allowing us to move beyond examining only additive and interactive effects of cognitive biases on mental health. Specifically, our moderated network model suggests that greater connectivity amongst biases relates to lower mental health. As we have explored in this paper, network approaches allow us to examine the role of interconnectedness amongst cognitive biases (or symptoms) and relate that structure to mental health.  
-
-Moving beyond the CCBH and positive mental health, network analyses can also be utilised to investigate resilience. Two recent papers explored networks of resilience factors in adolescents with and without experiences of childhood adversity [@fritz_unravelling_2019; @fritz_network_2018]. The degree to which resilience factors were positively associated – and we might hypothesise, mutually reinforce one another – was reduced in the childhood adversity group. The networks were also relatively stable over time (ages 14 to 17), perhaps explaining the lasting negative impact of childhood adversity. Further developments in network analysis theory and methodology are paving the way for more targeted investigations of resilience. Kalish and colleagues [-@kalisch_deconstructing_2019] describe network models that incorporating resilience factors – nodes that weaken the connection between symptoms, or symptom autocorrelations – into hybrid “symptom-and-resilience factor” networks. These models would require strong theory and further technical advancements, as well as extensive longitudinal data. Yet, these hybrid symptom-and-resilience factor networks offer the possibility to investigate resilience in a highly interconnected and dynamic 
+Network approaches also enable us to address the combined cogntive bias hypothesis, albeit via a different lens to traditional approaches. These questions are concerned with whether cognitive biases have additive and/or interactive effects on mental health. For example, previous research has found that combined cognitive biases were more predictive of adolescent depression severity than individual biases alone [@orchard_combined_2018]. Network theory, applied to mental disorders, proposes that highly connected networks are more vulnerable to psychopathology [@Borsboom2017; also see @kalisch_deconstructing_2019]. Strongly interconnected, causally related symptoms may reinforce one another to propagate a disorder. The network approach conceives of mental health problems as networks of connected symptoms that causally influence each other in a highly dynamic way, as opposed to the traditional view that mental health problems can be classified as distinct clusters of symptoms that are likely to have a single underlying cause. This is a paradigm shift that we have applied to the CCBH, allowing us to move beyond examining only additive and interactive effects of cognitive biases on mental health. Specifically, our moderated network model suggests that greater connectivity amongst biases relates to lower mental health. As we have explored in this paper, network approaches allow us to examine the role of interconnectedness amongst cognitive biases (or symptoms) and relate that structure to mental health.  
 
 ## Limitations
 
-We note several limitations of this study. Larger samples would be needed to increase the stability of the moderation effects. Although some edges showed a relatively consistent pattern of moderation by mental health, no edge uniformly showed this moderation across resamples. Moderation effects are typically small [e.g. @haslbeck_moderated_2018], which may explain the lack of stability of some moderation effects. We have endeavoured to interpret the moderation effects with some caution. 
+We note several limitations of this study. Larger samples are needed to increase the stability of the moderation effects. Although some edges showed a relatively consistent pattern of moderation by mental health, no edge uniformly showed this moderation across resamples. Moderation effects are typically small [e.g. @haslbeck_moderated_2018], which may explain the lack of stability of some moderation effects. We have endeavoured to interpret the moderation effects with some caution. 
 
-We were unable to include attention bias indices in our models. The internal consistencies were so low that we would be unable to make inferences using these measures. We were therefore unable to examine the CCBH as is it usually formulated; including attention, interpretation, and memory bias indices. Although we were unaware of psychometric issues with the dot-probe at the start of this study, it is becoming clear that the task is likely unsuitable for individual differences research [for a summary, see [@Parsons2019]. In relation to this, our interpretation bias indices did not show optimal reliability. It is possible that this is partly due to the small number of items (5 per bias) that were presented in this task. Similarly, we do not know how reliable the memory bias task is (though the test-retest is good, which is promising). Moving forward, an important challenge for researchers in this field is to invest more time and resources into developing valid and reliable cognitive bias tasks. Otherwise, low reliability will render many CCBH questions unanswerable. 
+We were unable to include attention bias indices in our models. The internal consistencies were so low that we would be unable to make inferences using these measures. We were therefore unable to examine the CCBH as is it usually formulated; including attention, interpretation, and memory bias indices. Although we were unaware of psychometric issues with the dot-probe at the start of this study, it is becoming clear that the task is likely unsuitable for individual differences research [for a summary, see [@Parsons2019]. In relation to this, our interpretation bias indices did not show optimal reliability. It is possible that this is partly due to the small number of items (5 per bias) that were presented in this task. Similarly, we do not know how reliable the memory bias task is [though the test-retest is good, which is promising, see @booth_cogbias_2019]. Moving forward, an important challenge for researchers in this field is to invest more time and resources into developing valid and reliable tasks to assess emotion-related cognitive biases. Otherwise, low reliability will render many CCBH questions unanswerable. 
 
 Another important issue is that our network is likely missing important mental health variables. The explained variance of mental health was only 33%. Thus, up to 67% of the variance would be explained by other variables not included in the model, including; other self-reported mental health factors and life events. We opted to include only cognitive bias measures and mental health in our analyses as this was our primary interest of the present paper. We did not include any of the other psychological, social, or cognitive factors thought to comprise positive mental health [@Keyes2002; @Keyes2005]. Future work would benefit from selecting measures based on cognitive models of mental health, including symptom-level psychological outcomes. This would provide a more comprehensive test of the CCBH, and we expect would explain much more variance in the model. We also note that explained variance is limited by the reliability of the measures included, further reinforcing the need for greater psychometric scrutiny of cognitive bias measures. 
 
 ## Future directions
 
-Psychological Network approaches offer a rapidly developing set of tools for examining the complex interplay amongst symptoms. Indeed, during the revision of this paper, moderated network models were introduced [@haslbeck_moderated_2018]. This prompted us to reanalyse our data and use the high-low mental health network comparison as a starting point, instead of being our core analysis. Moving forward, we will be able to utilise the full three waves of data in the CogBIAS longitudinal study [@booth_cogbias_2017]. Longitudinal data offers the opportunity to examine the stability of the baseline networks presented in this paper, throughout adolescence. One study in adults found that symptom networks were related to the longitudinal course of depression; more densely connected networks were associated with persistent major depressive disorder two years later [@van_borkulo_association_2015]. Using a similar approach, we will be able to test whether increased network connectivity at baseline, in early adolescence, predicts consistent levels of negative cognitive biases and poorer mental health in later adolescence. Using all three waves of data, we will also be able to use cross-lagged network models [@rhemtulla_cross-lagged_2019] to model longitudinal changes in the cognitive bias network. We will also be able to examine whether the strength of network connectivity predicts the future network structure. For example, we might hypothesise that a denser network would become denser over time, as biases reinforce one another. In contrast, a sparse network might be expected to remain sparse, as biases remain relatively independent. Longitudinal network approaches offer the opportunity to model complex interactions amongst cognitive biases over time, and therefore, examine the CCBH in greater detail.
+Psychological Network approaches offer a rapidly developing set of tools for examining the complex interplay amongst symptoms. Indeed, during the revision of this paper, moderated network models were introduced [@haslbeck_moderated_2018]. This prompted us to reanalyse our data and use the high-low mental health network comparison as a starting point, instead of being our core analysis. Moving forward, we will be able to utilise the full three waves of data in the CogBIAS longitudinal study [@booth_cogbias_2017]. Longitudinal data offers the opportunity to examine the stability of the baseline networks presented in this paper, throughout adolescence. One study in adults found that symptom networks were related to the longitudinal course of depression; more densely connected networks were associated with persistent major depressive disorder two years later [@van_borkulo_association_2015]. Using a similar approach, we will be able to test whether increased network connectivity at baseline, in early adolescence, predicts consistent levels of negative cognitive biases and poorer mental health in later adolescence. Using all three waves of data, we will also be able to use cross-lagged network models [@epskamp_psychometric_2019; @rhemtulla_cross-lagged_2019] to model longitudinal changes in the cognitive bias network. We will also be able to examine whether the strength of network connectivity predicts the future network structure. For example, we might hypothesise that a denser network would become denser over time, as biases reinforce one another. In contrast, a sparse network might be expected to remain sparse, as biases remain relatively independent. Longitudinal network approaches offer the opportunity to model complex interactions amongst cognitive biases over time, and therefore, examine the CCBH in greater detail.
 
 To summarise, we applied a moderated network approach to examine the interconnections amongst cognitive biases in a large normative sample of adolescents. To our knowledge, this is the first empirical study to report moderated network models. We have shown the usefulness of a moderated network approach in moving beyond a static symptom network structure, to examine mental health related changes in the structure. Network analyses offer a valuable tool in examining the Combined Cognitive Bias Hypothesis and a novel approach incorporating the complexity of interacting cognitive biases.
 
